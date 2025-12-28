@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Dem Ed seng CDen</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">Dem Ed seng CDen</div>
+    <div class="generated muted">Generated: 2025-12-28 12:41</div>
+
+    <div class="filters">
+      <div class="filter-row">
+        <label>Fulltext</label>
+        <input id="qAll" type="search" placeholder="Search anything..." />
+      </div>
+
+      <div class="filter-grid">
+        <div class="filter"><label>CDed #</label><input id="qCd" type="search" placeholder="e.g. 123" /></div>
+        <div class="filter"><label>Title</label><input id="qTitle" type="search" /></div>
+        <div class="filter"><label>Artist</label><input id="qArtist" type="search" /></div>
+        <div class="filter"><label>Year</label><input id="qYear" type="search" placeholder="e.g. 1991" /></div>
+        <div class="filter"><label>Label</label><input id="qLabel" type="search" /></div>
+        <div class="filter"><label>Catalog number</label><input id="qCat" type="search" /></div>
+      </div>
+
+      <div class="pager">
+        <div class="pager-left">
+          <button id="prev" type="button">Prev</button>
+          <span id="pageInfo" class="muted"></span>
+          <button id="next" type="button">Next</button>
+        </div>
+
+        <div class="pager-right">
+          <label class="muted">Page size</label>
+          <select id="pageSize">
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="0" selected>All</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div id="stats" class="stats muted"></div>
+    <div id="list" class="list"></div>
+  </main>
+
+  <!-- Cover modal -->
+  <div id="imgModal" class="modal hidden" aria-hidden="true">
+    <div id="modalBackdrop" class="modal-backdrop"></div>
+    <div class="modal-window" role="dialog" aria-modal="true" aria-label="Cover viewer">
+      <div class="modal-toolbar">
+        <div id="modalTitle" class="modal-title">Cover</div>
+        <div class="modal-actions">
+          <button id="btnFront" type="button">Front</button>
+          <button id="btnBack" type="button">Back</button>
+          <button id="btnClose" type="button" aria-label="Close">×</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <img id="modalImg" alt="Cover" />
+      </div>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
