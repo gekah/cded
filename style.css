@@ -56,9 +56,22 @@ a { color: inherit; text-decoration: underline; }
 }
 
 .filter-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+  align-items: end;
+}
+
+/* default: big fields can grow/shrink */
+.filter-grid > .filter {
+  flex: 1 1 220px;
+  min-width: 220px;
+}
+
+/* tight: size to content (no wasted space) */
+.filter-grid > .filter.tight {
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .filter label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
@@ -68,6 +81,19 @@ a { color: inherit; text-decoration: underline; }
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 13px;
+}
+
+/* Compact inputs that have naturally small content */
+#qCd   { width: 8ch;  max-width: 100%; }
+#qYear { width: 9ch;  max-width: 100%; }
+#qLabel{ width: 12ch; max-width: 100%; }
+#qCat  { width: 12ch; max-width: 100%; }
+
+
+/* Make “small-content” filters stop hogging horizontal space */
+.filter.tight {
+  max-width: 170px;
+  justify-self: start;
 }
 
 .pager {

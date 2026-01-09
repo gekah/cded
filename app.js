@@ -235,13 +235,11 @@
       const links = document.createElement('div');
       links.className = 'links';
 
-      // Always present, but only truly useful when hosted in the app.
-      const localA = link(r.localUrl, 'Edit', false, '_self');
-      if (!isHosted) {
-        localA.classList.add('disabled');
-        localA.title = 'Open this site inside the CdArchive app to use Edit links.';
+      // Only add Edit when hosted in the app (WebView2).
+      if (isHosted) {
+         const localA = link(r.localUrl, 'Edit', false, '_self');
+         links.appendChild(localA);
       }
-      links.appendChild(localA);
 
       if (r.links?.musicBrainz) links.appendChild(link(r.links.musicBrainz, 'MusicBrainz'));
       if (r.links?.listenBrainz) links.appendChild(link(r.links.listenBrainz, 'ListenBrainz'));
