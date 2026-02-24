@@ -8,7 +8,10 @@
 </head>
 <body>
   <header class="top">
-    <div class="brand">Dem Ed seng CDen</div>
+    <div class="topbar">
+      <div class="brand">Dem Ed seng CDen</div>
+      <button id="toggleAdvanced" class="toggle-advanced" type="button" aria-expanded="true">Filters</button>
+    </div>
     <div class="generated muted">Generated: 2026-02-23 19:52</div>
 
     <div class="filters">
@@ -24,24 +27,6 @@
         <div class="filter tight"><label>Year</label><input id="qYear" type="search" placeholder="1991" /></div>
         <div class="filter tight"><label>Label</label><input id="qLabel" type="search" /></div>
         <div class="filter tight"><label>Catalog number</label><input id="qCat" type="search" /></div>
-      </div>
-
-      <div class="pager">
-        <div class="pager-left">
-          <button id="prev" type="button">Prev</button>
-          <span id="pageInfo" class="muted"></span>
-          <button id="next" type="button">Next</button>
-        </div>
-
-        <div class="pager-right">
-          <label class="muted">Page size</label>
-          <select id="pageSize">
-            <option value="25">25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-            <option value="0" selected>All</option>
-          </select>
-        </div>
       </div>
     </div>
   </header>
@@ -60,7 +45,7 @@
         <div class="modal-actions">
           <button id="btnFront" type="button">Front</button>
           <button id="btnBack" type="button">Back</button>
-          <button id="btnClose" type="button" aria-label="Close">×</button>
+          <button id="btnClose" type="button" aria-label="Close">Ã—</button>
         </div>
       </div>
       <div class="modal-body">
