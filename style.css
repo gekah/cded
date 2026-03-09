@@ -127,7 +127,7 @@ a { color: inherit; text-decoration: underline; }
 #qCat  { width: 12ch; max-width: 100%; }
 
 
-/* Make “small-content” filters stop hogging horizontal space */
+/* Make "small-content" filters stop hogging horizontal space */
 .filter.tight {
   max-width: 170px;
   justify-self: start;
