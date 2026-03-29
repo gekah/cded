@@ -1,5 +1,4 @@
 (function () {
-  // Expect data.js to expose an array on window.CDED_RECORDS (as in the original project)
   var records = Array.isArray(window.CDED_RECORDS) ? window.CDED_RECORDS : [];
 
   function el(id) { return document.getElementById(id); }
@@ -15,7 +14,6 @@
   var qLabel = el('qLabel');
   var qCat = el('qCat');
 
-  // Sticky header compacting (hide advanced filters while scrolling on narrow viewports)
   var header = document.querySelector('header.top');
   var toggleAdvancedBtn = el('toggleAdvanced');
 
@@ -23,7 +21,6 @@
     return window.matchMedia && window.matchMedia('(max-width: 720px)').matches;
   }
 
-  // On mobile/narrow viewports, start with advanced filters collapsed.
   var mobileDefaultCollapsed = true;
 
   function setAdvancedExpanded(expanded) {
@@ -38,14 +35,11 @@
     if (!header) return;
 
     var narrow = isNarrow();
-    // On narrow screens we keep the header in "compact" mode (showing only Fulltext)
-    // unless the user explicitly expands it via the Filters button.
     var compact = narrow ? (mobileDefaultCollapsed || window.scrollY > 80) : false;
 
     if (compact) header.classList.add('compact');
     else header.classList.remove('compact');
 
-    // On wider screens, always show advanced filters and hide the toggle button via CSS.
     if (!narrow) setAdvancedExpanded(true);
   }
 
@@ -57,15 +51,12 @@
     });
   }
 
-  // Avoid passive options object for older iOS Safari.
   window.addEventListener('scroll', applyCompactState);
   window.addEventListener('resize', applyCompactState);
 
-  // Initial state
   applyCompactState();
   if (isNarrow()) setAdvancedExpanded(false);
 
-  // Modal elements
   var modal = el('imgModal');
   var modalBackdrop = el('modalBackdrop');
   var modalImg = el('modalImg');
@@ -74,7 +65,6 @@
   var btnBack = el('btnBack');
   var btnClose = el('btnClose');
 
-  // WebView2 exposes window.chrome.webview. A normal browser won't.
   var isHosted = !!(window.chrome && window.chrome.webview);
 
   var modalState = { front: null, back: null, showing: 'front' };
@@ -265,7 +255,7 @@
       var sticker = document.createElement('div');
       sticker.className = 'sticker';
       var n = (r.cDedNumber === null || r.cDedNumber === undefined) ? '' : String(r.cDedNumber).trim();
-      sticker.textContent = n ? (' ' + n) : ' —';
+      sticker.textContent = n ? (' ' + n) : ' -';
       meta.appendChild(sticker);
 
       var title = document.createElement('div');
@@ -310,7 +300,6 @@
     inputs[j].addEventListener('input', onFilterChange);
   }
 
-  // Initial state
   applyCompactState();
   render();
 })();
