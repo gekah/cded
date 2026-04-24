@@ -224,7 +224,7 @@
       var cover = document.createElement('div');
       cover.className = 'cover';
 
-      var coverClickUrl = r.coverOriginal || r.coverThumb || null;
+      var coverClickUrl = r.coverOriginal || r.backCoverOriginal || r.coverThumb || null;
 
       if (r.coverThumb) {
         var img = document.createElement('img');
@@ -242,7 +242,7 @@
       if (coverClickUrl) {
         cover.addEventListener('click', (function (rec) {
           return function () {
-            openModal(rec.coverOriginal || rec.coverThumb, rec.backCoverOriginal, rec.title);
+            openModal(rec.coverOriginal || rec.coverThumb || null, rec.backCoverOriginal || null, rec.title);
           };
         })(r));
       } else {
