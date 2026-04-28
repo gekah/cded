@@ -73,10 +73,12 @@
   var locationModal = el('locationModal');
   var locationBackdrop = el('locationBackdrop');
   var locationTitle = el('locationTitle');
+  var locationRecordTitle = el('locationRecordTitle');
   var locationSubtitle = el('locationSubtitle');
-  var locationSummary = el('locationSummary');
   var locationRange = el('locationRange');
   var locationApprox = el('locationApprox');
+  var locationThumbWrap = el('locationThumbWrap');
+  var locationThumb = el('locationThumb');
   var locationClose = el('locationClose');
   var cabinetMap = el('cabinetMap');
 
@@ -222,8 +224,17 @@
     };
   }
 
-  function buildLocationSummary(details) {
-    return details.bayLabel + ', shelf ' + details.shelfNumber + ' from the top';
+  function buildApproximatePositionText(details) {
+    var pos = details.approximate;
+    if (pos.index <= 1) {
+      return 'Position on shelf: first CD on the left.';
+    }
+    if (pos.index >= pos.count) {
+      return 'Position on shelf: last CD on the right.';
+    }
+    return 'Approximate position on that shelf: about ' +
+      pos.index + ' of ' + pos.count +
+      ', roughly ' + pos.percent + '% from the left.';
   }
 
   function buildLocationSubtitle(details) {
@@ -329,22 +340,29 @@
     }
   }
 
-  function openLocationModal(cdText, details) {
+  function openLocationModal(cdText, details, record) {
     if (!locationModal || !details) return;
     details.approximate = getApproximateShelfPosition(details);
 
     if (locationTitle) locationTitle.textContent = 'CD ' + cdText;
+    if (locationRecordTitle) locationRecordTitle.textContent = (record && record.title) ? record.title : '';
     if (locationSubtitle) locationSubtitle.textContent = buildLocationSubtitle(details);
-    if (locationSummary) locationSummary.textContent = buildLocationSummary(details);
     if (locationRange) {
       locationRange.textContent =
         'This shelf holds CD numbers ' + details.rangeStart + ' to ' + details.rangeEnd + '.';
     }
     if (locationApprox) {
-      locationApprox.textContent =
-        'Approximate position on that shelf: about ' +
-        details.approximate.index + ' of ' + details.approximate.count +
-        ', roughly ' + details.approximate.percent + '% from the left.';
+      locationApprox.textContent = buildApproximatePositionText(details);
+    }
+    if (locationThumbWrap && locationThumb) {
+      var thumbSrc = record && (record.coverThumb || record.coverOriginal || record.backCoverOriginal);
+      if (thumbSrc) {
+        locationThumb.src = thumbSrc;
+        locationThumbWrap.classList.remove('hidden');
+      } else {
+        locationThumb.src = '';
+        locationThumbWrap.classList.add('hidden');
+      }
     }
 
     renderCabinetMap(details);
@@ -446,18 +464,18 @@
         sticker.tabIndex = 0;
         sticker.setAttribute('role', 'button');
         sticker.title = 'Click to show shelf location';
-        sticker.addEventListener('click', (function (cdLabel, details) {
+        sticker.addEventListener('click', (function (cdLabel, details, record) {
           return function () {
-            openLocationModal(cdLabel, details);
+            openLocationModal(cdLabel, details, record);
           };
-        })(n, locationDetails));
-        sticker.addEventListener('keydown', (function (cdLabel, details) {
+        })(n, locationDetails, r));
+        sticker.addEventListener('keydown', (function (cdLabel, details, record) {
           return function (e) {
             if (e.key !== 'Enter' && e.key !== ' ') return;
             e.preventDefault();
-            openLocationModal(cdLabel, details);
+            openLocationModal(cdLabel, details, record);
           };
-        })(n, locationDetails));
+        })(n, locationDetails, r));
       }
 
       meta.appendChild(sticker);

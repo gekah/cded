@@ -275,6 +275,13 @@ main { padding: 14px; }
   font-size: 18px;
 }
 
+.location-record-title {
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .location-subtitle {
   margin-top: 4px;
   font-size: 13px;
@@ -283,20 +290,14 @@ main { padding: 14px; }
 .location-body {
   padding: 18px;
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(320px, 1fr);
-  gap: 20px;
+  grid-template-columns: minmax(300px, 360px) minmax(320px, 1fr);
+  gap: 12px;
   align-items: start;
 }
 
 .location-copy {
   display: grid;
   gap: 10px;
-}
-
-.location-summary {
-  font-size: 20px;
-  line-height: 1.3;
-  font-weight: 800;
 }
 
 .location-range {
@@ -307,6 +308,23 @@ main { padding: 14px; }
 .location-approx {
   font-size: 14px;
   line-height: 1.5;
+}
+
+.location-thumb-wrap {
+  margin-top: 4px;
+  width: min(310px, 100%);
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--soft);
+  border: 1px solid var(--border);
+}
+
+.location-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .cabinet-map {
@@ -389,9 +407,8 @@ main { padding: 14px; }
 .cabinet-shelf.active::after {
   content: attr(data-label);
   position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 4px;
+  top: -14px;
   padding: 2px 7px;
   border-radius: 999px;
   background: rgba(34,34,34,0.86);
@@ -399,6 +416,7 @@ main { padding: 14px; }
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
+  z-index: 3;
 }
 
 .cabinet-marker {
