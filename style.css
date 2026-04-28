@@ -209,6 +209,14 @@ main { padding: 14px; }
   margin-top: 4px;
 }
 
+.sticker.clickable {
+  cursor: pointer;
+}
+
+.sticker.clickable:hover {
+  background: #f7f7f7;
+}
+
 .title { font-weight: 800; font-size: 18px; margin-top: 2px; }
 
 .line { display: flex; gap: 8px; font-size: 14px; }
@@ -258,6 +266,175 @@ main { padding: 14px; }
 .modal-actions { display: flex; align-items: center; gap: 8px; }
 .modal-actions button { padding: 6px 10px; }
 
+.location-window {
+  max-width: min(860px, calc(100vw - 32px));
+}
+
+.location-title {
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.location-subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.location-body {
+  padding: 18px;
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(320px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.location-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.location-summary {
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 800;
+}
+
+.location-range {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.location-approx {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.cabinet-map {
+  --frame: #e8e2da;
+  --wood: linear-gradient(180deg, #c59a6b 0%, #b68859 100%);
+  display: grid;
+  grid-template-columns: 1fr 0.92fr 1fr;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #fbfaf8 0%, #f2eee8 100%);
+  border: 1px solid #ddd6cf;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.72);
+}
+
+.cabinet-bay {
+  display: grid;
+  gap: 8px;
+  padding: 12px 10px 10px;
+  background: linear-gradient(180deg, var(--frame) 0%, #f6f3ef 100%);
+  border: 1px solid #d8d2cb;
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5);
+}
+
+.cabinet-bay.left,
+.cabinet-bay.right {
+  grid-template-rows: repeat(10, minmax(18px, 1fr));
+}
+
+.cabinet-bay.center {
+  grid-template-rows: 20px repeat(8, minmax(18px, 1fr)) 20px;
+}
+
+.cabinet-slot {
+  display: grid;
+  align-items: stretch;
+}
+
+.cabinet-slot.empty {
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(255,255,255,0.22));
+}
+
+.cabinet-shelf {
+  position: relative;
+  min-height: 22px;
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0) 35%),
+    var(--wood);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.4),
+    0 1px 1px rgba(121,88,53,0.16);
+}
+
+.cabinet-shelf::before {
+  content: "";
+  position: absolute;
+  inset: 3px 7px;
+  border-radius: 4px 4px 2px 2px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(250,250,248,0.96) 0 5px,
+      rgba(80,80,80,0.82) 5px 6px,
+      rgba(250,250,248,0.96) 6px 11px,
+      rgba(130,130,130,0.72) 11px 12px
+    );
+}
+
+.cabinet-shelf.active {
+  outline: 3px solid #cb4d2f;
+  outline-offset: 2px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.4),
+    0 0 0 3px rgba(203,77,47,0.18);
+}
+
+.cabinet-shelf.active::after {
+  content: attr(data-label);
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(34,34,34,0.86);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.cabinet-marker {
+  position: absolute;
+  top: 50%;
+  left: var(--marker-left, 50%);
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #cb4d2f;
+  border: 2px solid rgba(255,255,255,0.92);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  z-index: 2;
+}
+
+.cabinet-marker::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -8px;
+  bottom: -8px;
+  width: 2px;
+  transform: translateX(-50%);
+  background: rgba(203,77,47,0.34);
+  border-radius: 999px;
+}
+
+.cabinet-bay-label {
+  margin-top: 4px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
 .modal-body {
   padding: 12px;
   background: var(--soft);
@@ -291,5 +468,9 @@ main { padding: 14px; }
   .line .k {
     min-width: 110px;
     text-align: left;
+  }
+
+  .location-body {
+    grid-template-columns: 1fr;
   }
 }

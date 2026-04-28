@@ -1,7 +1,13 @@
 (function () {
   var records = Array.isArray(window.CDED_RECORDS) ? window.CDED_RECORDS : [];
+  var shelfBreakpoints = [
+    48, 91, 125, 169, 195, 233, 269, 311, 360, 408,
+    450, 494, 533, 578, 630, 687, 733, 777,
+    825, 875, 928, 975, 1023, 1069, 1116, 1160, 1210, 1226
+  ];
 
   function el(id) { return document.getElementById(id); }
+  function pad2(n) { return String(n).padStart(2, '0'); }
 
   var listEl = el('list');
   var statsEl = el('stats');
@@ -64,6 +70,15 @@
   var btnFront = el('btnFront');
   var btnBack = el('btnBack');
   var btnClose = el('btnClose');
+  var locationModal = el('locationModal');
+  var locationBackdrop = el('locationBackdrop');
+  var locationTitle = el('locationTitle');
+  var locationSubtitle = el('locationSubtitle');
+  var locationSummary = el('locationSummary');
+  var locationRange = el('locationRange');
+  var locationApprox = el('locationApprox');
+  var locationClose = el('locationClose');
+  var cabinetMap = el('cabinetMap');
 
   var isHosted = !!(window.chrome && window.chrome.webview);
 
@@ -138,11 +153,94 @@
     return a;
   }
 
+  function parseCdNumber(value) {
+    var s = (value === null || value === undefined) ? '' : String(value).trim();
+    var match = s.match(/^\d+/);
+    return match ? parseInt(match[0], 10) : null;
+  }
+
+  function getShelfLocation(cdNumber) {
+    if (typeof cdNumber !== 'number' || !isFinite(cdNumber) || cdNumber < 1) return null;
+
+    for (var i = 0; i < shelfBreakpoints.length; i++) {
+      if (cdNumber > shelfBreakpoints[i]) continue;
+
+      var rangeStart = i === 0 ? 1 : shelfBreakpoints[i - 1] + 1;
+      var rangeEnd = shelfBreakpoints[i];
+
+      if (i < 10) {
+        return {
+          code: 'L' + pad2(i + 1),
+          bayKey: 'left',
+          bayLabel: 'Left bay',
+          shelfNumber: i + 1,
+          rangeStart: rangeStart,
+          rangeEnd: rangeEnd,
+          cdNumber: cdNumber
+        };
+      }
+
+      if (i < 18) {
+        return {
+          code: 'C' + pad2(i - 9),
+          bayKey: 'center',
+          bayLabel: 'Center bay',
+          shelfNumber: i - 9,
+          rangeStart: rangeStart,
+          rangeEnd: rangeEnd,
+          cdNumber: cdNumber
+        };
+      }
+
+      return {
+        code: 'R' + pad2(i - 17),
+        bayKey: 'right',
+        bayLabel: 'Right bay',
+        shelfNumber: i - 17,
+        rangeStart: rangeStart,
+        rangeEnd: rangeEnd,
+        cdNumber: cdNumber
+      };
+    }
+
+    return null;
+  }
+
+  function getApproximateShelfPosition(details) {
+    var count = details.rangeEnd - details.rangeStart + 1;
+    var index = details.cdNumber - details.rangeStart + 1;
+    var ratio = count <= 0 ? 0.5 : (index - 0.5) / count;
+
+    if (ratio < 0.03) ratio = 0.03;
+    if (ratio > 0.97) ratio = 0.97;
+
+    return {
+      count: count,
+      index: index,
+      ratio: ratio,
+      percent: Math.round(ratio * 100)
+    };
+  }
+
+  function buildLocationSummary(details) {
+    return details.bayLabel + ', shelf ' + details.shelfNumber + ' from the top';
+  }
+
+  function buildLocationSubtitle(details) {
+    return details.code + ' - ' + details.bayLabel + ' - shelf ' + details.shelfNumber;
+  }
+
   function closeModal() {
     if (!modal) return;
     modal.classList.add('hidden');
     modal.setAttribute('aria-hidden', 'true');
     if (modalImg) modalImg.src = '';
+  }
+
+  function closeLocationModal() {
+    if (!locationModal) return;
+    locationModal.classList.add('hidden');
+    locationModal.setAttribute('aria-hidden', 'true');
   }
 
   function setModalImage(which) {
@@ -174,11 +272,95 @@
     }
   }
 
+  function renderCabinetMap(details) {
+    if (!cabinetMap) return;
+
+    var baySpecs = [
+      { key: 'left', label: 'Left', rows: 10, topEmptyRows: 0, bottomEmptyRows: 0 },
+      { key: 'center', label: 'Center', rows: 8, topEmptyRows: 1, bottomEmptyRows: 1 },
+      { key: 'right', label: 'Right', rows: 10, topEmptyRows: 0, bottomEmptyRows: 0 }
+    ];
+
+    cabinetMap.innerHTML = '';
+
+    for (var i = 0; i < baySpecs.length; i++) {
+      var spec = baySpecs[i];
+      var bay = document.createElement('div');
+      bay.className = 'cabinet-bay ' + spec.key;
+
+      for (var topEmpty = 0; topEmpty < spec.topEmptyRows; topEmpty++) {
+        var topEmptySlot = document.createElement('div');
+        topEmptySlot.className = 'cabinet-slot empty';
+        bay.appendChild(topEmptySlot);
+      }
+
+      for (var row = 1; row <= spec.rows; row++) {
+        var slot = document.createElement('div');
+        slot.className = 'cabinet-slot';
+
+        var shelf = document.createElement('div');
+        shelf.className = 'cabinet-shelf';
+        if (details && details.bayKey === spec.key && details.shelfNumber === row) {
+          shelf.classList.add('active');
+          shelf.setAttribute('data-label', details.code);
+          shelf.style.setProperty('--marker-left', details.approximate.percent + '%');
+
+          var marker = document.createElement('div');
+          marker.className = 'cabinet-marker';
+          shelf.appendChild(marker);
+        }
+
+        slot.appendChild(shelf);
+        bay.appendChild(slot);
+      }
+
+      for (var bottomEmpty = 0; bottomEmpty < spec.bottomEmptyRows; bottomEmpty++) {
+        var bottomEmptySlot = document.createElement('div');
+        bottomEmptySlot.className = 'cabinet-slot empty';
+        bay.appendChild(bottomEmptySlot);
+      }
+
+      var bayLabel = document.createElement('div');
+      bayLabel.className = 'cabinet-bay-label';
+      bayLabel.textContent = spec.label;
+      bay.appendChild(bayLabel);
+
+      cabinetMap.appendChild(bay);
+    }
+  }
+
+  function openLocationModal(cdText, details) {
+    if (!locationModal || !details) return;
+    details.approximate = getApproximateShelfPosition(details);
+
+    if (locationTitle) locationTitle.textContent = 'CD ' + cdText;
+    if (locationSubtitle) locationSubtitle.textContent = buildLocationSubtitle(details);
+    if (locationSummary) locationSummary.textContent = buildLocationSummary(details);
+    if (locationRange) {
+      locationRange.textContent =
+        'This shelf holds CD numbers ' + details.rangeStart + ' to ' + details.rangeEnd + '.';
+    }
+    if (locationApprox) {
+      locationApprox.textContent =
+        'Approximate position on that shelf: about ' +
+        details.approximate.index + ' of ' + details.approximate.count +
+        ', roughly ' + details.approximate.percent + '% from the left.';
+    }
+
+    renderCabinetMap(details);
+    locationModal.classList.remove('hidden');
+    locationModal.setAttribute('aria-hidden', 'false');
+  }
+
   if (btnClose) btnClose.addEventListener('click', closeModal);
   if (modalBackdrop) modalBackdrop.addEventListener('click', closeModal);
+  if (locationClose) locationClose.addEventListener('click', closeLocationModal);
+  if (locationBackdrop) locationBackdrop.addEventListener('click', closeLocationModal);
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) closeModal();
+    if (e.key !== 'Escape') return;
+    if (locationModal && !locationModal.classList.contains('hidden')) closeLocationModal();
+    else if (modal && !modal.classList.contains('hidden')) closeModal();
   });
 
   if (btnFront) btnFront.addEventListener('click', function () { setModalImage('front'); });
@@ -256,6 +438,28 @@
       sticker.className = 'sticker';
       var n = (r.cDedNumber === null || r.cDedNumber === undefined) ? '' : String(r.cDedNumber).trim();
       sticker.textContent = n ? (' ' + n) : ' -';
+      var cdNumber = parseCdNumber(r.cDedNumber);
+      var locationDetails = getShelfLocation(cdNumber);
+
+      if (locationDetails) {
+        sticker.classList.add('clickable');
+        sticker.tabIndex = 0;
+        sticker.setAttribute('role', 'button');
+        sticker.title = 'Click to show shelf location';
+        sticker.addEventListener('click', (function (cdLabel, details) {
+          return function () {
+            openLocationModal(cdLabel, details);
+          };
+        })(n, locationDetails));
+        sticker.addEventListener('keydown', (function (cdLabel, details) {
+          return function (e) {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            openLocationModal(cdLabel, details);
+          };
+        })(n, locationDetails));
+      }
+
       meta.appendChild(sticker);
 
       var title = document.createElement('div');
