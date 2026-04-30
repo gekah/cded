@@ -11,7 +11,7 @@
     <div class="topbar">
       <div class="brand">Dem Ed seng CDen</div>
       <div class="topbar-right">
-        <div class="generated muted">2026-04-28</div>
+        <div class="generated muted">2026-04-30</div>
         <button id="toggleAdvanced" class="toggle-advanced" type="button" aria-expanded="true">Filters</button>
       </div>
     </div>
@@ -30,11 +30,38 @@
         <div class="filter tight"><label>Label</label><input id="qLabel" type="search" /></div>
         <div class="filter tight"><label>Catalog number</label><input id="qCat" type="search" /></div>
       </div>
+
+      <div class="selection-panel">
+        <div class="selection-panel-title">Selection</div>
+        <div class="selection-filter-group">
+          <label><input type="radio" name="selectionFilterMobile" value="all" checked /> All</label>
+          <label><input type="radio" name="selectionFilterMobile" value="selected" /> Selected</label>
+          <label><input type="radio" name="selectionFilterMobile" value="unselected" /> Not selected</label>
+        </div>
+        <div class="selection-panel-actions">
+          <button id="copySelectedMobile" type="button">Copy selected list</button>
+          <button id="clearSelectedMobile" type="button">Clear selected</button>
+        </div>
+      </div>
     </div>
   </header>
 
   <main>
-    <div id="stats" class="stats muted"></div>
+    <div class="list-toolbar">
+      <div id="stats" class="stats muted"></div>
+      <div class="selection-toolbar">
+        <button id="selectionMenuButton" type="button" aria-expanded="false">Selection</button>
+        <div id="selectionMenu" class="selection-menu hidden">
+          <div class="selection-menu-title">Selection</div>
+          <button type="button" class="selection-mode" data-selection-mode="all">Show all</button>
+          <button type="button" class="selection-mode" data-selection-mode="selected">Show selected</button>
+          <button type="button" class="selection-mode" data-selection-mode="unselected">Show not selected</button>
+          <div class="selection-menu-sep"></div>
+          <button id="copySelectedDesktop" type="button">Copy selected list</button>
+          <button id="clearSelectedDesktop" type="button">Clear selected</button>
+        </div>
+      </div>
+    </div>
     <div id="list" class="list"></div>
   </main>
 

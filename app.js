@@ -19,6 +19,14 @@
   var qYear = el('qYear');
   var qLabel = el('qLabel');
   var qCat = el('qCat');
+  var selectionMenuButton = el('selectionMenuButton');
+  var selectionMenu = el('selectionMenu');
+  var selectionModeButtons = document.querySelectorAll('[data-selection-mode]');
+  var selectionFilterMobile = document.querySelectorAll('input[name="selectionFilterMobile"]');
+  var copySelectedDesktop = el('copySelectedDesktop');
+  var copySelectedMobile = el('copySelectedMobile');
+  var clearSelectedDesktop = el('clearSelectedDesktop');
+  var clearSelectedMobile = el('clearSelectedMobile');
 
   var header = document.querySelector('header.top');
   var toggleAdvancedBtn = el('toggleAdvanced');
@@ -83,8 +91,42 @@
   var cabinetMap = el('cabinetMap');
 
   var isHosted = !!(window.chrome && window.chrome.webview);
+  var selectedStorageKey = 'cded-selected-record-ids-v1';
+  var selectedIds = loadSelectedIds();
+  var selectionMode = 'all';
 
   var modalState = { front: null, back: null, showing: 'front' };
+
+  function loadSelectedIds() {
+    try {
+      var raw = window.localStorage ? window.localStorage.getItem(selectedStorageKey) : null;
+      if (!raw) return {};
+
+      var parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return {};
+
+      var map = {};
+      for (var i = 0; i < parsed.length; i++) {
+        if (parsed[i]) map[parsed[i]] = true;
+      }
+      return map;
+    } catch (_err) {
+      return {};
+    }
+  }
+
+  function saveSelectedIds() {
+    try {
+      if (!window.localStorage) return;
+      window.localStorage.setItem(selectedStorageKey, JSON.stringify(Object.keys(selectedIds)));
+    } catch (_err) {
+      // Ignore storage failures and keep the UI usable.
+    }
+  }
+
+  function getSelectedCount() {
+    return Object.keys(selectedIds).length;
+  }
 
   function norm(s) {
     if (s === null || s === undefined) return '';
@@ -126,6 +168,13 @@
       if (!contains(blob, f.all)) return false;
     }
 
+    return true;
+  }
+
+  function matchesSelection(r) {
+    var isSelected = !!selectedIds[r.id];
+    if (selectionMode === 'selected') return isSelected;
+    if (selectionMode === 'unselected') return !isSelected;
     return true;
   }
 
@@ -254,6 +303,124 @@
     locationModal.setAttribute('aria-hidden', 'true');
   }
 
+  function closeSelectionMenu() {
+    if (!selectionMenu || !selectionMenuButton) return;
+    selectionMenu.classList.add('hidden');
+    selectionMenuButton.setAttribute('aria-expanded', 'false');
+  }
+
+  function updateSelectionUi() {
+    var count = getSelectedCount();
+
+    if (selectionMenuButton) {
+      selectionMenuButton.textContent = count > 0 ? ('Selection (' + count + ')') : 'Selection';
+    }
+
+    for (var i = 0; i < selectionModeButtons.length; i++) {
+      var btn = selectionModeButtons[i];
+      var active = btn.getAttribute('data-selection-mode') === selectionMode;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+
+    for (var j = 0; j < selectionFilterMobile.length; j++) {
+      selectionFilterMobile[j].checked = selectionFilterMobile[j].value === selectionMode;
+    }
+  }
+
+  function setSelectionMode(mode) {
+    selectionMode = mode;
+    updateSelectionUi();
+    render();
+  }
+
+  function toggleSelected(id, checked) {
+    if (!id) return;
+    if (checked) selectedIds[id] = true;
+    else delete selectedIds[id];
+
+    saveSelectedIds();
+    updateSelectionUi();
+    render();
+  }
+
+  function buildSelectedListText() {
+    var lines = [];
+
+    for (var i = 0; i < records.length; i++) {
+      var record = records[i];
+      if (!selectedIds[record.id]) continue;
+
+      var cd = record.cDedNumber ? ('CD ' + String(record.cDedNumber).trim()) : 'CD ?';
+      var title = record.title || '(untitled)';
+      var artist = record.artists || '';
+
+      lines.push(cd + ' | ' + title + ' | ' + artist);
+    }
+
+    return lines.join('\n');
+  }
+
+  function copyText(text) {
+    if (!text) return Promise.resolve(false);
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(function () { return true; }).catch(function () { return false; });
+    }
+
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', 'readonly');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return Promise.resolve(ok);
+    } catch (_err) {
+      return Promise.resolve(false);
+    }
+  }
+
+  function flashButton(button, label) {
+    if (!button) return;
+    var original = button.textContent;
+    button.textContent = label;
+    window.setTimeout(function () {
+      button.textContent = original;
+    }, 1200);
+  }
+
+  function copySelectedList(button) {
+    var text = buildSelectedListText();
+    if (!text) {
+      flashButton(button, 'Nothing selected');
+      return;
+    }
+
+    copyText(text).then(function (ok) {
+      flashButton(button, ok ? 'Copied' : 'Copy failed');
+    });
+  }
+
+  function clearSelected(button) {
+    var count = getSelectedCount();
+    if (count === 0) {
+      flashButton(button, 'Nothing selected');
+      return;
+    }
+
+    if (!window.confirm('Clear ' + count + ' selected CD(s)?')) return;
+
+    selectedIds = {};
+    saveSelectedIds();
+    updateSelectionUi();
+    render();
+    flashButton(button, 'Cleared');
+  }
+
   function setModalImage(which) {
     modalState.showing = which;
     var src = (which === 'back') ? modalState.back : modalState.front;
@@ -374,15 +541,52 @@
   if (modalBackdrop) modalBackdrop.addEventListener('click', closeModal);
   if (locationClose) locationClose.addEventListener('click', closeLocationModal);
   if (locationBackdrop) locationBackdrop.addEventListener('click', closeLocationModal);
+  if (selectionMenuButton) {
+    selectionMenuButton.addEventListener('click', function () {
+      if (!selectionMenu) return;
+      var open = selectionMenu.classList.contains('hidden');
+      if (open) {
+        selectionMenu.classList.remove('hidden');
+        selectionMenuButton.setAttribute('aria-expanded', 'true');
+      } else {
+        closeSelectionMenu();
+      }
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!selectionMenu || selectionMenu.classList.contains('hidden')) return;
+    if (selectionMenu.contains(e.target)) return;
+    if (selectionMenuButton && selectionMenuButton.contains(e.target)) return;
+    closeSelectionMenu();
+  });
 
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    if (locationModal && !locationModal.classList.contains('hidden')) closeLocationModal();
+    if (selectionMenu && !selectionMenu.classList.contains('hidden')) closeSelectionMenu();
+    else if (locationModal && !locationModal.classList.contains('hidden')) closeLocationModal();
     else if (modal && !modal.classList.contains('hidden')) closeModal();
   });
 
   if (btnFront) btnFront.addEventListener('click', function () { setModalImage('front'); });
   if (btnBack) btnBack.addEventListener('click', function () { setModalImage('back'); });
+  if (copySelectedDesktop) copySelectedDesktop.addEventListener('click', function () { copySelectedList(copySelectedDesktop); });
+  if (copySelectedMobile) copySelectedMobile.addEventListener('click', function () { copySelectedList(copySelectedMobile); });
+  if (clearSelectedDesktop) clearSelectedDesktop.addEventListener('click', function () { clearSelected(clearSelectedDesktop); });
+  if (clearSelectedMobile) clearSelectedMobile.addEventListener('click', function () { clearSelected(clearSelectedMobile); });
+
+  for (var modeIndex = 0; modeIndex < selectionModeButtons.length; modeIndex++) {
+    selectionModeButtons[modeIndex].addEventListener('click', function () {
+      setSelectionMode(this.getAttribute('data-selection-mode') || 'all');
+      closeSelectionMenu();
+    });
+  }
+
+  for (var filterIndex = 0; filterIndex < selectionFilterMobile.length; filterIndex++) {
+    selectionFilterMobile[filterIndex].addEventListener('change', function () {
+      if (this.checked) setSelectionMode(this.value || 'all');
+    });
+  }
 
   if (modalImg) {
     modalImg.addEventListener('click', function () {
@@ -407,7 +611,7 @@
 
   function render() {
     var f = getFilters();
-    var filtered = records.filter(function (r) { return matches(r, f); });
+    var filtered = records.filter(function (r) { return matches(r, f) && matchesSelection(r); });
     var total = filtered.length;
 
     if (statsEl) statsEl.textContent = total + ' result(s)';
@@ -452,6 +656,23 @@
       var meta = document.createElement('div');
       meta.className = 'meta';
 
+      var cardHead = document.createElement('div');
+      cardHead.className = 'card-head';
+
+      var selector = document.createElement('input');
+      selector.type = 'checkbox';
+      selector.className = 'select-toggle';
+      selector.checked = !!selectedIds[r.id];
+      selector.setAttribute('aria-label', 'Select ' + (r.title || 'CD'));
+      selector.addEventListener('change', (function (id) {
+        return function () {
+          toggleSelected(id, this.checked);
+        };
+      })(r.id));
+      selector.addEventListener('click', function (e) {
+        e.stopPropagation();
+      });
+
       var sticker = document.createElement('div');
       sticker.className = 'sticker';
       var n = (r.cDedNumber === null || r.cDedNumber === undefined) ? '' : String(r.cDedNumber).trim();
@@ -478,7 +699,11 @@
         })(n, locationDetails, r));
       }
 
-      meta.appendChild(sticker);
+      cardHead.appendChild(selector);
+      cardHead.appendChild(sticker);
+      meta.appendChild(cardHead);
+
+      if (selector.checked) row.classList.add('selected');
 
       var title = document.createElement('div');
       title.className = 'title';
@@ -522,6 +747,7 @@
     inputs[j].addEventListener('input', onFilterChange);
   }
 
+  updateSelectionUi();
   applyCompactState();
   render();
 })();

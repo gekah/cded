@@ -153,7 +153,89 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 main { padding: 14px; }
 
-.stats { margin-bottom: 10px; font-size: 12px; }
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.stats { font-size: 12px; }
+
+.selection-toolbar {
+  position: relative;
+}
+
+.selection-toolbar > button {
+  white-space: nowrap;
+}
+
+.selection-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+  display: grid;
+  gap: 4px;
+  z-index: 20;
+}
+
+.selection-menu button {
+  text-align: left;
+}
+
+.selection-menu-title {
+  padding: 4px 6px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.selection-menu .selection-mode.active {
+  background: var(--soft);
+  border-color: #cfcfcf;
+}
+
+.selection-menu-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border);
+}
+
+.selection-panel {
+  display: none;
+}
+
+.selection-panel-title {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.selection-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.selection-filter-group label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.selection-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 
 .list { display: grid; gap: 12px; }
 
@@ -165,6 +247,11 @@ main { padding: 14px; }
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--card);
+}
+
+.row.selected {
+  background: #fcfaf6;
+  border-color: #d8ccb8;
 }
 
 .cover {
@@ -193,6 +280,20 @@ main { padding: 14px; }
 }
 
 .meta { display: grid; gap: 6px; align-content: start; }
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.select-toggle {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #5f7f50;
+  cursor: pointer;
+}
 
 .sticker {
   display: inline-grid;
@@ -486,6 +587,19 @@ main { padding: 14px; }
   .line .k {
     min-width: 110px;
     text-align: left;
+  }
+
+  .list-toolbar {
+    align-items: flex-start;
+  }
+
+  .selection-toolbar {
+    display: none;
+  }
+
+  .top.show-advanced .selection-panel {
+    display: grid;
+    gap: 8px;
   }
 
   .location-body {
