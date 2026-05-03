@@ -298,8 +298,9 @@ main { padding: 14px; }
 .sticker {
   display: inline-grid;
   place-items: center;
-  width: 55px;
+  min-width: 55px;
   height: 24px;
+  padding: 0 8px;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 1px;
@@ -308,6 +309,7 @@ main { padding: 14px; }
   letter-spacing: 0.5px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.08);
   margin-top: 4px;
+  white-space: nowrap;
 }
 
 .sticker.clickable {
@@ -316,6 +318,14 @@ main { padding: 14px; }
 
 .sticker.clickable:hover {
   background: #f7f7f7;
+}
+
+.sticker-tail {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
 }
 
 .title { font-weight: 800; font-size: 18px; margin-top: 2px; }

@@ -139,6 +139,398 @@
     return norm(hay).indexOf(n) !== -1;
   }
 
+  function hasText(value) {
+    return value !== null && value !== undefined && String(value).trim() !== '';
+  }
+
+  function getFulltextBlob(r) {
+    var links = r.links || {};
+    return [
+      r.cDedNumber,
+      r.title,
+      r.artists,
+      r.cdCount,
+      r.year,
+      r.label,
+      r.catNo,
+      r.notes,
+      r.coverOriginal,
+      r.backCoverOriginal,
+      links.musicBrainz,
+      links.listenBrainz,
+      links.discogs,
+      links.qobuz,
+      links.naxos
+    ].join(' | ');
+  }
+
+  function isAdvancedQuery(value) {
+    return /^\s*=/.test(String(value || ''));
+  }
+
+  function getAdvancedQueryText(value) {
+    return String(value || '').replace(/^\s*=\s*/, '');
+  }
+
+  function normalizeIdentifier(value) {
+    return norm(value).replace(/[\s_-]+/g, '');
+  }
+
+  function normalizeFieldName(value) {
+    var key = normalizeIdentifier(value);
+
+    if (key === 'artist' || key === 'artists') return 'artist';
+    if (key === 'title') return 'title';
+    if (key === 'label') return 'label';
+    if (key === 'year') return 'year';
+    if (key === 'cat' || key === 'catno' || key === 'catalog' || key === 'catalognumber') return 'catno';
+    if (key === 'notes' || key === 'note') return 'notes';
+    if (key === 'composer') return 'composer';
+    if (key === 'cd' || key === 'cded' || key === 'cdednumber') return 'cd';
+
+    return null;
+  }
+
+  function normalizePredicateName(value) {
+    var key = normalizeIdentifier(value);
+
+    if (key === 'has') return 'has';
+    if (key === 'missing') return 'missing';
+
+    return null;
+  }
+
+  function normalizePredicateTarget(value) {
+    var key = normalizeIdentifier(value);
+
+    if (key === 'musicbrainz' || key === 'mb') return 'musicbrainz';
+    if (key === 'listenbrainz' || key === 'lb') return 'listenbrainz';
+    if (key === 'discogs') return 'discogs';
+    if (key === 'qobuz') return 'qobuz';
+    if (key === 'naxos') return 'naxos';
+    if (key === 'composer') return 'composer';
+    if (key === 'frontcover') return 'frontcover';
+    if (key === 'backcover') return 'backcover';
+
+    return null;
+  }
+
+  function splitCommaSeparatedList(value) {
+    var raw = String(value || '');
+    if (!raw.trim()) return [];
+
+    var parts = raw.split(',');
+    var items = [];
+
+    for (var i = 0; i < parts.length; i++) {
+      var item = parts[i].trim();
+      if (!item) throw new Error('Empty item in comma-separated list.');
+      items.push(item);
+    }
+
+    return items;
+  }
+
+  function compileYearMatcher(value) {
+    var text = String(value || '').trim();
+    var exactMatch = text.match(/^\d{1,4}$/);
+    if (exactMatch) {
+      var exactYear = parseInt(text, 10);
+      return function (r) {
+        if (!hasText(r.year)) return false;
+        var year = Number(r.year);
+        return isFinite(year) && year === exactYear;
+      };
+    }
+
+    var rangeMatch = text.match(/^(\d{1,4})\s*-\s*(\d{1,4})$/);
+    if (!rangeMatch) {
+      throw new Error('Invalid year value. Use YYYY or YYYY-YYYY.');
+    }
+
+    var startYear = parseInt(rangeMatch[1], 10);
+    var endYear = parseInt(rangeMatch[2], 10);
+    if (endYear < startYear) {
+      throw new Error('Invalid year range. The end year must not be smaller than the start year.');
+    }
+
+    return function (r) {
+      if (!hasText(r.year)) return false;
+      var year = Number(r.year);
+      return isFinite(year) && year >= startYear && year <= endYear;
+    };
+  }
+
+  function compileFieldExpression(fieldName, value) {
+    if (fieldName === 'artist') {
+      return function (r) { return contains(r.artists, value); };
+    }
+    if (fieldName === 'title') {
+      return function (r) { return contains(r.title, value); };
+    }
+    if (fieldName === 'label') {
+      return function (r) { return contains(r.label, value); };
+    }
+    if (fieldName === 'year') {
+      return compileYearMatcher(value);
+    }
+    if (fieldName === 'catno') {
+      return function (r) { return contains(r.catNo, value); };
+    }
+    if (fieldName === 'notes') {
+      return function (r) { return contains(r.notes, value); };
+    }
+    if (fieldName === 'composer') {
+      return function (r) { return contains(r.composer, value); };
+    }
+    if (fieldName === 'cd') {
+      return function (r) { return contains(r.cDedNumber, value); };
+    }
+
+    throw new Error('Unknown field: ' + fieldName);
+  }
+
+  function compilePredicateTarget(targetName) {
+    return function (r) {
+      var links = r.links || {};
+
+      if (targetName === 'musicbrainz') return hasText(links.musicBrainz);
+      if (targetName === 'listenbrainz') return hasText(links.listenBrainz);
+      if (targetName === 'discogs') return hasText(links.discogs);
+      if (targetName === 'qobuz') return hasText(links.qobuz);
+      if (targetName === 'naxos') return hasText(links.naxos);
+      if (targetName === 'composer') return hasText(r.composer);
+      if (targetName === 'frontcover') return hasText(r.coverOriginal) || hasText(r.coverThumb);
+      if (targetName === 'backcover') return hasText(r.backCoverOriginal);
+
+      return false;
+    };
+  }
+
+  function compilePredicateExpression(predicateName, value) {
+    var items = splitCommaSeparatedList(value);
+    if (!items.length) throw new Error('Predicate expressions require at least one target.');
+
+    var targetMatchers = [];
+    for (var i = 0; i < items.length; i++) {
+      var targetName = normalizePredicateTarget(items[i]);
+      if (!targetName) {
+        throw new Error('Unknown predicate target: ' + items[i]);
+      }
+      targetMatchers.push(compilePredicateTarget(targetName));
+    }
+
+    if (predicateName === 'has') {
+      return function (r) {
+        for (var j = 0; j < targetMatchers.length; j++) {
+          if (!targetMatchers[j](r)) return false;
+        }
+        return true;
+      };
+    }
+
+    if (predicateName === 'missing') {
+      return function (r) {
+        for (var j = 0; j < targetMatchers.length; j++) {
+          if (targetMatchers[j](r)) return false;
+        }
+        return true;
+      };
+    }
+
+    throw new Error('Unknown predicate: ' + predicateName);
+  }
+
+  function compileAdvancedQuery(queryText) {
+    var input = String(queryText || '');
+    var index = 0;
+
+    function syntaxError(message) {
+      return new Error(message);
+    }
+
+    function skipWhitespace() {
+      while (index < input.length && /\s/.test(input.charAt(index))) index++;
+    }
+
+    function peekWordOperator(startIndex) {
+      var slice = input.slice(startIndex);
+      var match = /^(AND|OR)\b/i.exec(slice);
+      if (!match) return null;
+      return { op: match[1].toUpperCase(), length: match[0].length };
+    }
+
+    function tryReadLogicalOperator() {
+      skipWhitespace();
+      if (index >= input.length) return null;
+
+      var ch = input.charAt(index);
+      if (ch === '&') {
+        index++;
+        return 'AND';
+      }
+      if (ch === '|') {
+        index++;
+        return 'OR';
+      }
+
+      var wordOperator = peekWordOperator(index);
+      if (!wordOperator) return null;
+
+      index += wordOperator.length;
+      return wordOperator.op;
+    }
+
+    function parseIdentifier() {
+      skipWhitespace();
+      var start = index;
+      while (index < input.length && /[A-Za-z0-9_]/.test(input.charAt(index))) index++;
+      if (start === index) throw syntaxError('Expected a field or predicate name.');
+      return input.slice(start, index);
+    }
+
+    function parseQuotedValue() {
+      if (input.charAt(index) !== '"') throw syntaxError('Expected a quoted value.');
+
+      index++;
+      var value = '';
+
+      while (index < input.length) {
+        var ch = input.charAt(index);
+        if (ch === '"') {
+          if (input.charAt(index + 1) === '"') {
+            value += '"';
+            index += 2;
+            continue;
+          }
+
+          index++;
+          return value;
+        }
+
+        value += ch;
+        index++;
+      }
+
+      throw syntaxError('Unterminated quoted value.');
+    }
+
+    function parseUnquotedValue() {
+      var value = '';
+
+      while (index < input.length) {
+        var ch = input.charAt(index);
+        if (ch === '&' || ch === '|') break;
+
+        if (/\s/.test(ch)) {
+          var whitespaceStart = index;
+          while (index < input.length && /\s/.test(input.charAt(index))) index++;
+
+          var symbol = input.charAt(index);
+          if (symbol === '&' || symbol === '|') {
+            index = whitespaceStart;
+            break;
+          }
+
+          var wordOperator = peekWordOperator(index);
+          if (wordOperator) {
+            index = whitespaceStart;
+            break;
+          }
+
+          value += ' ';
+          continue;
+        }
+
+        value += ch;
+        index++;
+      }
+
+      return value.trim();
+    }
+
+    function parseValue() {
+      skipWhitespace();
+      if (index >= input.length) throw syntaxError('Expected a value after ":".');
+
+      if (input.charAt(index) === '"') {
+        return parseQuotedValue();
+      }
+
+      var value = parseUnquotedValue();
+      if (!value) throw syntaxError('Expected a value after ":".');
+      return value;
+    }
+
+    function parseExpressionMatcher() {
+      var identifier = parseIdentifier();
+      skipWhitespace();
+      if (input.charAt(index) !== ':') {
+        throw syntaxError('Expected ":" after "' + identifier + '".');
+      }
+
+      index++;
+      var value = parseValue();
+      var fieldName = normalizeFieldName(identifier);
+      if (fieldName) return compileFieldExpression(fieldName, value);
+
+      var predicateName = normalizePredicateName(identifier);
+      if (predicateName) return compilePredicateExpression(predicateName, value);
+
+      throw syntaxError('Unknown field or predicate: ' + identifier);
+    }
+
+    function parseAndGroup() {
+      var matchers = [parseExpressionMatcher()];
+
+      while (true) {
+        var savedIndex = index;
+        var op = tryReadLogicalOperator();
+
+        if (op === 'AND') {
+          matchers.push(parseExpressionMatcher());
+          continue;
+        }
+
+        index = savedIndex;
+        break;
+      }
+
+      return function (r) {
+        for (var i = 0; i < matchers.length; i++) {
+          if (!matchers[i](r)) return false;
+        }
+        return true;
+      };
+    }
+
+    skipWhitespace();
+    if (index >= input.length) {
+      return function () { return true; };
+    }
+
+    var orGroups = [parseAndGroup()];
+
+    while (true) {
+      skipWhitespace();
+      if (index >= input.length) break;
+
+      var op = tryReadLogicalOperator();
+      if (op !== 'OR') {
+        throw syntaxError('Expected AND or OR between expressions.');
+      }
+
+      orGroups.push(parseAndGroup());
+    }
+
+    return function (r) {
+      for (var i = 0; i < orGroups.length; i++) {
+        if (orGroups[i](r)) return true;
+      }
+      return false;
+    };
+  }
+
   function matches(r, f) {
     if (!contains(r.cDedNumber, f.cd)) return false;
     if (!contains(r.title, f.title)) return false;
@@ -147,25 +539,10 @@
     if (!contains(r.label, f.label)) return false;
     if (!contains(r.catNo, f.cat)) return false;
 
+    if (f.advancedMatcher && !f.advancedMatcher(r)) return false;
+
     if (f.all) {
-      var links = r.links || {};
-      var blob = [
-        r.cDedNumber,
-        r.title,
-        r.artists,
-        r.year,
-        r.label,
-        r.catNo,
-        r.notes,
-        r.coverOriginal,
-        r.backCoverOriginal,
-        links.musicBrainz,
-        links.listenBrainz,
-        links.discogs,
-        links.qobuz,
-        links.naxos
-      ].join(' | ');
-      if (!contains(blob, f.all)) return false;
+      if (!contains(getFulltextBlob(r), f.all)) return false;
     }
 
     return true;
@@ -179,8 +556,24 @@
   }
 
   function getFilters() {
+    var rawAll = qAll ? String(qAll.value || '') : '';
+    var advancedMatcher = null;
+    var advancedError = '';
+    var plainAll = norm(rawAll);
+
+    if (isAdvancedQuery(rawAll)) {
+      plainAll = '';
+      try {
+        advancedMatcher = compileAdvancedQuery(getAdvancedQueryText(rawAll));
+      } catch (err) {
+        advancedError = err && err.message ? err.message : String(err);
+      }
+    }
+
     return {
-      all: norm(qAll && qAll.value),
+      all: plainAll,
+      advancedMatcher: advancedMatcher,
+      advancedError: advancedError,
       cd: norm(qCd && qCd.value),
       title: norm(qTitle && qTitle.value),
       artist: norm(qArtist && qArtist.value),
@@ -609,12 +1002,44 @@
     return d;
   }
 
+  function formatCdCountText(count) {
+    if (count === null || count === undefined) return '';
+    var n = Number(count);
+    if (!isFinite(n) || n <= 1) return '';
+    return n + ' CD';
+  }
+
+  function appendLabelAndCatNo(meta, label, catNo) {
+    var hasLabel = !!label;
+    var hasCatNo = !!catNo;
+
+    if (hasLabel && hasCatNo) {
+      meta.appendChild(makeLine('Label', label + ', ' + catNo));
+      return;
+    }
+
+    if (hasLabel) {
+      meta.appendChild(makeLine('Label', label));
+      return;
+    }
+
+    if (hasCatNo) {
+      meta.appendChild(makeLine('Catalog number', catNo));
+    }
+  }
+
   function render() {
     var f = getFilters();
-    var filtered = records.filter(function (r) { return matches(r, f) && matchesSelection(r); });
+    var filtered = f.advancedError
+      ? []
+      : records.filter(function (r) { return matches(r, f) && matchesSelection(r); });
     var total = filtered.length;
 
-    if (statsEl) statsEl.textContent = total + ' result(s)';
+    if (statsEl) {
+      statsEl.textContent = f.advancedError
+        ? ('Query error: ' + f.advancedError)
+        : (total + ' result(s)');
+    }
     if (!listEl) return;
 
     listEl.innerHTML = '';
@@ -677,6 +1102,7 @@
       sticker.className = 'sticker';
       var n = (r.cDedNumber === null || r.cDedNumber === undefined) ? '' : String(r.cDedNumber).trim();
       sticker.textContent = n ? (' ' + n) : ' -';
+      var cdCountText = formatCdCountText(r.cdCount);
       var cdNumber = parseCdNumber(r.cDedNumber);
       var locationDetails = getShelfLocation(cdNumber);
 
@@ -701,6 +1127,12 @@
 
       cardHead.appendChild(selector);
       cardHead.appendChild(sticker);
+      if (cdCountText) {
+        var cdCount = document.createElement('div');
+        cdCount.className = 'sticker-tail';
+        cdCount.textContent = cdCountText;
+        cardHead.appendChild(cdCount);
+      }
       meta.appendChild(cardHead);
 
       if (selector.checked) row.classList.add('selected');
@@ -713,8 +1145,7 @@
       meta.appendChild(makeLine('Artists', r.artists || ''));
 
       if (r.year !== null && r.year !== undefined && String(r.year).trim() !== '') meta.appendChild(makeLine('Year', String(r.year)));
-      if (r.label) meta.appendChild(makeLine('Label', r.label));
-      if (r.catNo) meta.appendChild(makeLine('Catalog number', r.catNo));
+      appendLabelAndCatNo(meta, r.label, r.catNo);
       if (r.notes) meta.appendChild(makeLine('Notes', r.notes));
 
       var linksEl = document.createElement('div');
