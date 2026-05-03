@@ -180,9 +180,12 @@
     var key = normalizeIdentifier(value);
 
     if (key === 'artist' || key === 'artists') return 'artist';
+    if (key === 'bay') return 'bay';
+    if (key === 'shelf') return 'shelf';
     if (key === 'title') return 'title';
     if (key === 'label') return 'label';
     if (key === 'year') return 'year';
+    if (key === 'cdcount' || key === 'cds' || key === 'cdcounts') return 'cdcount';
     if (key === 'cat' || key === 'catno' || key === 'catalog' || key === 'catalognumber') return 'catno';
     if (key === 'notes' || key === 'note') return 'notes';
     if (key === 'composer') return 'composer';
@@ -209,6 +212,7 @@
     if (key === 'qobuz') return 'qobuz';
     if (key === 'naxos') return 'naxos';
     if (key === 'composer') return 'composer';
+    if (key === 'ripped') return 'ripped';
     if (key === 'frontcover') return 'frontcover';
     if (key === 'backcover') return 'backcover';
 
@@ -265,6 +269,33 @@
     if (fieldName === 'artist') {
       return function (r) { return contains(r.artists, value); };
     }
+    if (fieldName === 'bay') {
+      var bayValue = norm(value);
+      if (bayValue !== 'left' && bayValue !== 'center' && bayValue !== 'right') {
+        throw new Error('Invalid bay value. Use left, center, or right.');
+      }
+
+      return function (r) {
+        var details = getShelfLocation(parseCdNumber(r.cDedNumber));
+        return !!details && details.bayKey === bayValue;
+      };
+    }
+    if (fieldName === 'shelf') {
+      var shelfValue = String(value || '').trim();
+      if (!/^\d+$/.test(shelfValue)) {
+        throw new Error('Invalid shelf value. Use a number from 1 to 10.');
+      }
+
+      var shelfNumber = parseInt(shelfValue, 10);
+      if (shelfNumber < 1 || shelfNumber > 10) {
+        throw new Error('Invalid shelf value. Use a number from 1 to 10.');
+      }
+
+      return function (r) {
+        var details = getShelfLocation(parseCdNumber(r.cDedNumber));
+        return !!details && details.shelfNumber === shelfNumber;
+      };
+    }
     if (fieldName === 'title') {
       return function (r) { return contains(r.title, value); };
     }
@@ -273,6 +304,34 @@
     }
     if (fieldName === 'year') {
       return compileYearMatcher(value);
+    }
+    if (fieldName === 'cdcount') {
+      var text = String(value || '').trim();
+      var exactMatch = text.match(/^\d+$/);
+      var rangeMatch = text.match(/^(\d+)\s*-\s*(\d+)$/);
+
+      if (exactMatch) {
+        var exactCount = parseInt(text, 10);
+        return function (r) {
+          var count = Number(r.cdCount);
+          return isFinite(count) && count === exactCount;
+        };
+      }
+
+      if (rangeMatch) {
+        var startCount = parseInt(rangeMatch[1], 10);
+        var endCount = parseInt(rangeMatch[2], 10);
+        if (endCount < startCount) {
+          throw new Error('Invalid cdcount range. The end value must not be smaller than the start value.');
+        }
+
+        return function (r) {
+          var count = Number(r.cdCount);
+          return isFinite(count) && count >= startCount && count <= endCount;
+        };
+      }
+
+      throw new Error('Invalid cdcount value. Use N or N-N.');
     }
     if (fieldName === 'catno') {
       return function (r) { return contains(r.catNo, value); };
@@ -300,6 +359,7 @@
       if (targetName === 'qobuz') return hasText(links.qobuz);
       if (targetName === 'naxos') return hasText(links.naxos);
       if (targetName === 'composer') return hasText(r.composer);
+      if (targetName === 'ripped') return r.ripped !== null && r.ripped !== undefined;
       if (targetName === 'frontcover') return hasText(r.coverOriginal) || hasText(r.coverThumb);
       if (targetName === 'backcover') return hasText(r.backCoverOriginal);
 
