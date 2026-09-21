@@ -1,10 +1,6 @@
 (function () {
   var records = Array.isArray(window.CDED_RECORDS) ? window.CDED_RECORDS : [];
-  var shelfBreakpoints = [
-    48, 91, 125, 169, 195, 233, 269, 311, 360, 408,
-    450, 494, 533, 578, 630, 687, 733, 777,
-    825, 875, 928, 975, 1023, 1069, 1116, 1160, 1210, 1226
-  ];
+  var storageLayout = window.CDED_STORAGE_LAYOUT || { locations: [] };
 
   function el(id) { return document.getElementById(id); }
   function pad2(n) { return String(n).padStart(2, '0'); }
@@ -271,13 +267,9 @@
     }
     if (fieldName === 'bay') {
       var bayValue = norm(value);
-      if (bayValue !== 'left' && bayValue !== 'center' && bayValue !== 'right') {
-        throw new Error('Invalid bay value. Use left, center, or right.');
-      }
-
       return function (r) {
         var details = getShelfLocation(parseCdNumber(r.cDedNumber));
-        return !!details && details.bayKey === bayValue;
+        return !!details && (norm(details.bayKey) === bayValue || norm(details.bayLabel) === bayValue);
       };
     }
     if (fieldName === 'shelf') {
@@ -287,8 +279,8 @@
       }
 
       var shelfNumber = parseInt(shelfValue, 10);
-      if (shelfNumber < 1 || shelfNumber > 10) {
-        throw new Error('Invalid shelf value. Use a number from 1 to 10.');
+      if (shelfNumber < 1) {
+        throw new Error('Invalid shelf value. Use a positive shelf number.');
       }
 
       return function (r) {
@@ -666,45 +658,36 @@
   function getShelfLocation(cdNumber) {
     if (typeof cdNumber !== 'number' || !isFinite(cdNumber) || cdNumber < 1) return null;
 
-    for (var i = 0; i < shelfBreakpoints.length; i++) {
-      if (cdNumber > shelfBreakpoints[i]) continue;
+    var locations = Array.isArray(storageLayout.locations) ? storageLayout.locations : [];
+    for (var locationIndex = 0; locationIndex < locations.length; locationIndex++) {
+      var location = locations[locationIndex];
+      var rangeStart = Number(location.startNumber);
+      if (!isFinite(rangeStart) || cdNumber < rangeStart) continue;
 
-      var rangeStart = i === 0 ? 1 : shelfBreakpoints[i - 1] + 1;
-      var rangeEnd = shelfBreakpoints[i];
-
-      if (i < 10) {
-        return {
-          code: 'L' + pad2(i + 1),
-          bayKey: 'left',
-          bayLabel: 'Left bay',
-          shelfNumber: i + 1,
-          rangeStart: rangeStart,
-          rangeEnd: rangeEnd,
-          cdNumber: cdNumber
-        };
+      var bays = Array.isArray(location.bays) ? location.bays : [];
+      for (var bayIndex = 0; bayIndex < bays.length; bayIndex++) {
+        var bay = bays[bayIndex];
+        var shelves = Array.isArray(bay.shelves) ? bay.shelves : [];
+        for (var shelfIndex = 0; shelfIndex < shelves.length; shelfIndex++) {
+          var rangeEnd = Number(shelves[shelfIndex].endNumber);
+          if (cdNumber <= rangeEnd) {
+            return {
+              code: String(bay.codePrefix || '') + pad2(shelfIndex + 1),
+              locationKey: location.key,
+              locationLabel: location.label,
+              bayKey: bay.key,
+              bayLabel: bay.label,
+              shelfNumber: shelfIndex + 1,
+              rangeStart: rangeStart,
+              rangeEnd: rangeEnd,
+              cdNumber: cdNumber,
+              location: location,
+              bay: bay
+            };
+          }
+          rangeStart = rangeEnd + 1;
+        }
       }
-
-      if (i < 18) {
-        return {
-          code: 'C' + pad2(i - 9),
-          bayKey: 'center',
-          bayLabel: 'Center bay',
-          shelfNumber: i - 9,
-          rangeStart: rangeStart,
-          rangeEnd: rangeEnd,
-          cdNumber: cdNumber
-        };
-      }
-
-      return {
-        code: 'R' + pad2(i - 17),
-        bayKey: 'right',
-        bayLabel: 'Right bay',
-        shelfNumber: i - 17,
-        rangeStart: rangeStart,
-        rangeEnd: rangeEnd,
-        cdNumber: cdNumber
-      };
     }
 
     return null;
@@ -740,7 +723,7 @@
   }
 
   function buildLocationSubtitle(details) {
-    return details.code + ' - ' + details.bayLabel + ' - shelf ' + details.shelfNumber;
+    return details.code + ' - ' + details.locationLabel + ' - ' + details.bayLabel + ' bay - shelf ' + details.shelfNumber;
   }
 
   function closeModal() {
@@ -906,26 +889,29 @@
   function renderCabinetMap(details) {
     if (!cabinetMap) return;
 
-    var baySpecs = [
-      { key: 'left', label: 'Left', rows: 10, topEmptyRows: 0, bottomEmptyRows: 0 },
-      { key: 'center', label: 'Center', rows: 8, topEmptyRows: 1, bottomEmptyRows: 1 },
-      { key: 'right', label: 'Right', rows: 10, topEmptyRows: 0, bottomEmptyRows: 0 }
-    ];
+    var baySpecs = details && details.location && Array.isArray(details.location.bays)
+      ? details.location.bays
+      : [];
 
     cabinetMap.innerHTML = '';
+    cabinetMap.style.setProperty('--bay-count', Math.max(1, baySpecs.length));
 
     for (var i = 0; i < baySpecs.length; i++) {
       var spec = baySpecs[i];
       var bay = document.createElement('div');
-      bay.className = 'cabinet-bay ' + spec.key;
+      bay.className = 'cabinet-bay';
+      var shelves = Array.isArray(spec.shelves) ? spec.shelves : [];
+      var topEmptyRows = Number(spec.topEmptyRows) || 0;
+      var bottomEmptyRows = Number(spec.bottomEmptyRows) || 0;
+      bay.style.gridTemplateRows = 'repeat(' + (topEmptyRows + shelves.length + bottomEmptyRows) + ', minmax(18px, 1fr))';
 
-      for (var topEmpty = 0; topEmpty < spec.topEmptyRows; topEmpty++) {
+      for (var topEmpty = 0; topEmpty < topEmptyRows; topEmpty++) {
         var topEmptySlot = document.createElement('div');
         topEmptySlot.className = 'cabinet-slot empty';
         bay.appendChild(topEmptySlot);
       }
 
-      for (var row = 1; row <= spec.rows; row++) {
+      for (var row = 1; row <= shelves.length; row++) {
         var slot = document.createElement('div');
         slot.className = 'cabinet-slot';
 
@@ -945,7 +931,7 @@
         bay.appendChild(slot);
       }
 
-      for (var bottomEmpty = 0; bottomEmpty < spec.bottomEmptyRows; bottomEmpty++) {
+      for (var bottomEmpty = 0; bottomEmpty < bottomEmptyRows; bottomEmpty++) {
         var bottomEmptySlot = document.createElement('div');
         bottomEmptySlot.className = 'cabinet-slot empty';
         bay.appendChild(bottomEmptySlot);

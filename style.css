@@ -442,7 +442,7 @@ main { padding: 14px; }
   --frame: #e8e2da;
   --wood: linear-gradient(180deg, #c59a6b 0%, #b68859 100%);
   display: grid;
-  grid-template-columns: 1fr 0.92fr 1fr;
+  grid-template-columns: repeat(var(--bay-count, 3), minmax(0, 1fr));
   gap: 12px;
   padding: 14px;
   border-radius: 18px;
@@ -459,15 +459,6 @@ main { padding: 14px; }
   border: 1px solid #d8d2cb;
   border-radius: 12px;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5);
-}
-
-.cabinet-bay.left,
-.cabinet-bay.right {
-  grid-template-rows: repeat(10, minmax(18px, 1fr));
-}
-
-.cabinet-bay.center {
-  grid-template-rows: 20px repeat(8, minmax(18px, 1fr)) 20px;
 }
 
 .cabinet-slot {
