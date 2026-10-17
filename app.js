@@ -2,6 +2,18 @@
   var records = Array.isArray(window.CDED_RECORDS) ? window.CDED_RECORDS : [];
   var storageLayout = window.CDED_STORAGE_LAYOUT || { locations: [] };
 
+  var isPublicCatalog = window.location.hostname.toLowerCase() === 'gekah.github.io' &&
+    /^\/cded(?:\/|$)/i.test(window.location.pathname);
+  var fullCatalogParameter = new URLSearchParams(window.location.search).get('gk') || '';
+  var fullCatalogRequested = /^(1|true|yes|on|ja)$/i.test(fullCatalogParameter.trim());
+
+  if (isPublicCatalog && !fullCatalogRequested) {
+    records = records.filter(function (record) {
+      var cdNumber = parseCdNumber(record.cDedNumber);
+      return cdNumber !== null && cdNumber >= 1 && cdNumber <= 2000;
+    });
+  }
+
   function el(id) { return document.getElementById(id); }
   function pad2(n) { return String(n).padStart(2, '0'); }
 
@@ -1101,11 +1113,13 @@
 
       var coverClickUrl = r.coverOriginal || r.backCoverOriginal || r.coverThumb || null;
 
-      if (r.coverThumb) {
+      var coverDisplayUrl = r.coverThumb || r.coverOriginal || r.backCoverOriginal || null;
+
+      if (coverDisplayUrl) {
         var img = document.createElement('img');
         img.loading = 'lazy';
         img.alt = 'Cover';
-        img.src = r.coverThumb;
+        img.src = coverDisplayUrl;
         cover.appendChild(img);
       } else {
         var ph = document.createElement('div');
