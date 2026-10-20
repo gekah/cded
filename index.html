@@ -18,8 +18,11 @@
 
     <div class="filters">
       <div class="filter-row">
-        <label>Fulltext</label>
-        <input id="qAll" type="search" placeholder="Search anything..." />
+        <label for="qAll">Fulltext</label>
+        <div class="fulltext-control">
+          <input id="qAll" type="search" placeholder="Search anything..." />
+          <button id="queryHelpButton" class="query-help-button" type="button" aria-label="Query help" aria-haspopup="dialog" aria-expanded="false" title="Query help">?</button>
+        </div>
       </div>
 
       <div class="filter-grid">
@@ -104,6 +107,28 @@
           </div>
         </div>
         <div id="cabinetMap" class="cabinet-map" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="queryHelpModal" class="modal hidden" aria-hidden="true">
+    <div id="queryHelpBackdrop" class="modal-backdrop"></div>
+    <div class="modal-window query-help-window" role="dialog" aria-modal="true" aria-labelledby="queryHelpTitle">
+      <div class="modal-toolbar">
+        <div id="queryHelpTitle" class="location-title">Query help</div>
+        <div class="modal-actions"><button id="queryHelpClose" type="button" aria-label="Close query help">&times;</button></div>
+      </div>
+      <div class="query-help-body">
+        <p>Type ordinary words for a general search. Start with <code>=</code> to use a structured query in Fulltext.</p>
+        <div class="query-help-examples">
+          <div><code>=has:ripped</code><span>CDs with a ripped copy</span></div>
+          <div><code>=missing:ripped</code><span>CDs without one</span></div>
+          <div><code>=artist:"Johann Sebastian Bach" AND has:ripped</code><span>Combine conditions</span></div>
+          <div><code>=title:sonata OR title:concerto</code><span>Match either condition</span></div>
+        </div>
+        <p>Fields: <code>cd</code>, <code>title</code>, <code>artist</code>, <code>composer</code>, <code>year</code>, <code>label</code>, <code>catno</code>, <code>notes</code>, <code>cdcount</code>, <code>bay</code>, <code>shelf</code>.</p>
+        <p>Use <code>has:</code> or <code>missing:</code> with <code>ripped</code>, <code>frontcover</code>, <code>backcover</code>, <code>composer</code>, <code>musicbrainz</code>, <code>listenbrainz</code>, <code>discogs</code>, <code>qobuz</code>, or <code>naxos</code>.</p>
+        <p>Use <code>AND</code> / <code>OR</code> (or <code>&amp;</code> / <code>|</code>) between conditions. Quote a value containing spaces. Parentheses are not supported.</p>
       </div>
     </div>
   </div>

@@ -21,6 +21,10 @@
   var statsEl = el('stats');
 
   var qAll = el('qAll');
+  var queryHelpButton = el('queryHelpButton');
+  var queryHelpModal = el('queryHelpModal');
+  var queryHelpBackdrop = el('queryHelpBackdrop');
+  var queryHelpClose = el('queryHelpClose');
   var qCd = el('qCd');
   var qTitle = el('qTitle');
   var qArtist = el('qArtist');
@@ -745,6 +749,24 @@
     if (modalImg) modalImg.src = '';
   }
 
+  function closeQueryHelp() {
+    if (!queryHelpModal) return;
+    queryHelpModal.classList.add('hidden');
+    queryHelpModal.setAttribute('aria-hidden', 'true');
+    if (queryHelpButton) {
+      queryHelpButton.setAttribute('aria-expanded', 'false');
+      queryHelpButton.focus();
+    }
+  }
+
+  function openQueryHelp() {
+    if (!queryHelpModal) return;
+    queryHelpModal.classList.remove('hidden');
+    queryHelpModal.setAttribute('aria-hidden', 'false');
+    if (queryHelpButton) queryHelpButton.setAttribute('aria-expanded', 'true');
+    if (queryHelpClose) queryHelpClose.focus();
+  }
+
   function closeLocationModal() {
     if (!locationModal) return;
     locationModal.classList.add('hidden');
@@ -990,6 +1012,9 @@
 
   if (btnClose) btnClose.addEventListener('click', closeModal);
   if (modalBackdrop) modalBackdrop.addEventListener('click', closeModal);
+  if (queryHelpButton) queryHelpButton.addEventListener('click', openQueryHelp);
+  if (queryHelpClose) queryHelpClose.addEventListener('click', closeQueryHelp);
+  if (queryHelpBackdrop) queryHelpBackdrop.addEventListener('click', closeQueryHelp);
   if (locationClose) locationClose.addEventListener('click', closeLocationModal);
   if (locationBackdrop) locationBackdrop.addEventListener('click', closeLocationModal);
   if (selectionMenuButton) {
@@ -1014,7 +1039,8 @@
 
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    if (selectionMenu && !selectionMenu.classList.contains('hidden')) closeSelectionMenu();
+    if (queryHelpModal && !queryHelpModal.classList.contains('hidden')) closeQueryHelp();
+    else if (selectionMenu && !selectionMenu.classList.contains('hidden')) closeSelectionMenu();
     else if (locationModal && !locationModal.classList.contains('hidden')) closeLocationModal();
     else if (modal && !modal.classList.contains('hidden')) closeModal();
   });
@@ -1187,6 +1213,15 @@
 
       cardHead.appendChild(selector);
       cardHead.appendChild(sticker);
+      if (r.ripped !== null && r.ripped !== undefined) {
+        var ripIcon = document.createElement('span');
+        ripIcon.className = 'rip-icon';
+        ripIcon.title = 'Ripped copy exists';
+        ripIcon.setAttribute('role', 'img');
+        ripIcon.setAttribute('aria-label', 'Ripped copy exists');
+        ripIcon.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle class="rip-disc" cx="10" cy="10" r="9"/><circle class="rip-hole" cx="10" cy="10" r="2.5"/></svg>';
+        cardHead.appendChild(ripIcon);
+      }
       if (cdCountText) {
         var cdCount = document.createElement('div');
         cdCount.className = 'sticker-tail';
