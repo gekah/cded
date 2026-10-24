@@ -1,18 +1,22 @@
 (function () {
-  var records = Array.isArray(window.CDED_RECORDS) ? window.CDED_RECORDS : [];
+  var allRecords = Array.isArray(window.CDED_RECORDS) ? window.CDED_RECORDS : [];
   var storageLayout = window.CDED_STORAGE_LAYOUT || { locations: [] };
 
   var isPublicCatalog = window.location.hostname.toLowerCase() === 'gekah.github.io' &&
     /^\/cded(?:\/|$)/i.test(window.location.pathname);
   var fullCatalogParameter = new URLSearchParams(window.location.search).get('gk') || '';
   var fullCatalogRequested = /^(1|true|yes|on|ja)$/i.test(fullCatalogParameter.trim());
+  var fullCatalogEnabled = !isPublicCatalog || fullCatalogRequested;
+  var records = [];
 
-  if (isPublicCatalog && !fullCatalogRequested) {
-    records = records.filter(function (record) {
+  function refreshCatalogScope() {
+    records = fullCatalogEnabled ? allRecords : allRecords.filter(function (record) {
       var cdNumber = parseCdNumber(record.cDedNumber);
       return cdNumber !== null && cdNumber >= 1 && cdNumber <= 2000;
     });
   }
+
+  refreshCatalogScope();
 
   function el(id) { return document.getElementById(id); }
   function pad2(n) { return String(n).padStart(2, '0'); }
@@ -39,8 +43,12 @@
   var copySelectedMobile = el('copySelectedMobile');
   var clearSelectedDesktop = el('clearSelectedDesktop');
   var clearSelectedMobile = el('clearSelectedMobile');
+  var jumpDialog = el('jumpDialog');
+  var jumpInput = el('jumpInput');
+  var jumpStatus = el('jumpStatus');
 
   var header = document.querySelector('header.top');
+  var filtersEl = document.querySelector('.filters');
   var toggleAdvancedBtn = el('toggleAdvanced');
 
   function isNarrow() {
@@ -108,6 +116,9 @@
   var selectionMode = 'all';
 
   var modalState = { front: null, back: null, showing: 'front' };
+  var jumpSession = null;
+  var renderedRowsById = {};
+  var jumpHighlightTimer = null;
 
   function loadSelectedIds() {
     try {
@@ -290,18 +301,14 @@
     }
     if (fieldName === 'shelf') {
       var shelfValue = String(value || '').trim();
-      if (!/^\d+$/.test(shelfValue)) {
-        throw new Error('Invalid shelf value. Use a number from 1 to 10.');
-      }
-
-      var shelfNumber = parseInt(shelfValue, 10);
-      if (shelfNumber < 1) {
-        throw new Error('Invalid shelf value. Use a positive shelf number.');
+      var shelfCode = normalizeIdentifier(shelfValue);
+      if (!/^[a-z]+\d+$/.test(shelfCode)) {
+        throw new Error('Invalid shelf value. Use a physical shelf code such as L03.');
       }
 
       return function (r) {
         var details = getShelfLocation(parseCdNumber(r.cDedNumber));
-        return !!details && details.shelfNumber === shelfNumber;
+        return !!details && normalizeIdentifier(details.code) === shelfCode;
       };
     }
     if (fieldName === 'title') {
@@ -779,6 +786,250 @@
     selectionMenuButton.setAttribute('aria-expanded', 'false');
   }
 
+  function replaceCurrentUrl(url) {
+    try {
+      window.history.replaceState(window.history.state, '', url);
+    } catch (_err) {
+    }
+  }
+
+  function setFullCatalogEnabled(enabled) {
+    fullCatalogEnabled = !isPublicCatalog || enabled;
+    refreshCatalogScope();
+
+    if (!isPublicCatalog) return;
+
+    var url = new URL(window.location.href);
+    if (fullCatalogEnabled) url.searchParams.set('gk', 'yes');
+    else url.searchParams.delete('gk');
+    replaceCurrentUrl(url.href);
+  }
+
+  function setFilterControlsPaused(paused) {
+    var filterInputs = [qAll, qCd, qTitle, qArtist, qYear, qLabel, qCat];
+    for (var i = 0; i < filterInputs.length; i++) {
+      if (filterInputs[i]) filterInputs[i].disabled = paused;
+    }
+
+    for (var j = 0; j < selectionModeButtons.length; j++) {
+      selectionModeButtons[j].disabled = paused;
+    }
+    for (var k = 0; k < selectionFilterMobile.length; k++) {
+      selectionFilterMobile[k].disabled = paused;
+    }
+
+    if (selectionMenuButton) selectionMenuButton.disabled = paused;
+    if (filtersEl) filtersEl.classList.toggle('jump-paused', paused);
+    if (selectionMenuButton && selectionMenuButton.parentElement) {
+      selectionMenuButton.parentElement.classList.toggle('jump-paused', paused);
+    }
+  }
+
+  function clearJumpHighlight(removeAfterDelay) {
+    if (jumpHighlightTimer !== null) {
+      window.clearTimeout(jumpHighlightTimer);
+      jumpHighlightTimer = null;
+    }
+
+    var highlighted = listEl ? listEl.querySelector('.row.jump-target') : null;
+    if (!highlighted) return;
+
+    if (removeAfterDelay) {
+      jumpHighlightTimer = window.setTimeout(function () {
+        highlighted.classList.remove('jump-target');
+        jumpHighlightTimer = null;
+      }, 1600);
+      return;
+    }
+
+    highlighted.classList.remove('jump-target');
+  }
+
+  function scrollToJumpRecord(record, removeHighlightAfterDelay) {
+    if (!record || !record.id) return false;
+
+    var row = renderedRowsById[record.id];
+    if (!row) return false;
+
+    clearJumpHighlight(false);
+    row.classList.add('jump-target');
+    row.scrollIntoView({ behavior: 'auto', block: 'center' });
+    if (removeHighlightAfterDelay) clearJumpHighlight(true);
+    return true;
+  }
+
+  function findJumpRecord(requestedNumber) {
+    var exact = null;
+    var below = null;
+    var belowNumber = -1;
+
+    for (var i = 0; i < records.length; i++) {
+      var record = records[i];
+      var cdNumber = parseCdNumber(record.cDedNumber);
+      if (cdNumber === null) continue;
+
+      var raw = String(record.cDedNumber === null || record.cDedNumber === undefined ? '' : record.cDedNumber).trim();
+      if (cdNumber === requestedNumber && /^0*\d+$/.test(raw)) {
+        exact = record;
+        break;
+      }
+
+      if (cdNumber < requestedNumber && cdNumber > belowNumber) {
+        below = record;
+        belowNumber = cdNumber;
+      }
+    }
+
+    return exact
+      ? { record: exact, requestedNumber: requestedNumber, shownNumber: String(exact.cDedNumber).trim(), exact: true }
+      : below
+        ? { record: below, requestedNumber: requestedNumber, shownNumber: String(below.cDedNumber).trim(), exact: false }
+        : null;
+  }
+
+  function setJumpStatus(message, isError) {
+    if (!jumpStatus) return;
+    jumpStatus.textContent = message;
+    jumpStatus.classList.toggle('error', !!isError);
+  }
+
+  function restoreJumpBackground() {
+    if (!jumpSession) return;
+
+    jumpSession.previewing = false;
+    jumpSession.result = null;
+    clearJumpHighlight(false);
+    setFilterControlsPaused(false);
+    render();
+    window.requestAnimationFrame(function () {
+      if (jumpSession) window.scrollTo(0, jumpSession.scrollY);
+    });
+  }
+
+  function previewJumpValue() {
+    if (!jumpSession || !jumpInput) return;
+
+    var raw = String(jumpInput.value || '').trim();
+    if (raw === '') {
+      setJumpStatus('Enter a positive CD number.', false);
+      restoreJumpBackground();
+      return;
+    }
+
+    if (!/^\d+$/.test(raw)) {
+      jumpSession.result = null;
+      clearJumpHighlight(false);
+      setJumpStatus('Enter a positive whole number.', true);
+      return;
+    }
+
+    var requestedNumber = Number(raw);
+    if (!Number.isSafeInteger(requestedNumber) || requestedNumber <= 0) {
+      jumpSession.result = null;
+      clearJumpHighlight(false);
+      setJumpStatus('The CD number must be greater than zero.', true);
+      return;
+    }
+
+    if (!jumpSession.previewing) {
+      jumpSession.previewing = true;
+      setFilterControlsPaused(true);
+      render();
+    }
+
+    var result = findJumpRecord(requestedNumber);
+    jumpSession.result = result;
+    if (!result) {
+      clearJumpHighlight(false);
+      setJumpStatus('No CD exists below ' + requestedNumber + '.', true);
+      return;
+    }
+
+    scrollToJumpRecord(result.record, false);
+    setJumpStatus(
+      result.exact
+        ? ('Showing CD ' + result.shownNumber + '.')
+        : (requestedNumber + ' not found — showing CD ' + result.shownNumber + '.'),
+      false);
+  }
+
+  function cancelJump() {
+    if (!jumpSession || !jumpDialog) return;
+
+    var session = jumpSession;
+    jumpSession = null;
+    jumpDialog.classList.add('hidden');
+    clearJumpHighlight(false);
+    setFilterControlsPaused(false);
+    fullCatalogEnabled = session.fullCatalogEnabled;
+    refreshCatalogScope();
+    replaceCurrentUrl(session.url);
+    render();
+    window.requestAnimationFrame(function () {
+      window.scrollTo(0, session.scrollY);
+    });
+  }
+
+  function clearFiltersForAcceptedJump() {
+    var filterInputs = [qAll, qCd, qTitle, qArtist, qYear, qLabel, qCat];
+    for (var i = 0; i < filterInputs.length; i++) {
+      if (filterInputs[i]) filterInputs[i].value = '';
+    }
+    selectionMode = 'all';
+    updateSelectionUi();
+  }
+
+  function acceptJump() {
+    if (!jumpSession || !jumpSession.result || !jumpDialog) return;
+
+    var result = jumpSession.result;
+    jumpSession = null;
+    jumpDialog.classList.add('hidden');
+    setFilterControlsPaused(false);
+    clearFiltersForAcceptedJump();
+    render();
+    scrollToJumpRecord(result.record, true);
+  }
+
+  function openJumpDialog() {
+    if (!jumpDialog || !jumpInput) return;
+
+    closeSelectionMenu();
+    closeQueryHelp();
+    closeLocationModal();
+    closeModal();
+
+    if (!jumpSession) {
+      jumpSession = {
+        scrollY: window.scrollY,
+        fullCatalogEnabled: fullCatalogEnabled,
+        url: window.location.href,
+        previewing: false,
+        result: null
+      };
+    }
+
+    jumpDialog.classList.remove('hidden');
+    setJumpStatus('Enter a positive CD number.', false);
+    jumpInput.focus();
+    jumpInput.select();
+  }
+
+  function jumpToGk() {
+    if (!jumpSession || !jumpInput) return;
+    jumpInput.value = '2001';
+
+    if (!fullCatalogEnabled) {
+      setFullCatalogEnabled(true);
+      if (jumpSession.previewing) render();
+    }
+
+    previewJumpValue();
+    acceptJump();
+  }
+
+  window.cdedOpenCatalogJump = openJumpDialog;
+
   function updateSelectionUi() {
     var count = getSelectedCount();
 
@@ -1037,9 +1288,40 @@
     closeSelectionMenu();
   });
 
+  if (jumpInput) {
+    jumpInput.addEventListener('input', previewJumpValue);
+    jumpInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        cancelJump();
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        acceptJump();
+        return;
+      }
+
+      if (!e.ctrlKey && !e.altKey && !e.metaKey && String(e.key).toLowerCase() === 'k') {
+        e.preventDefault();
+        jumpToGk();
+      }
+    });
+  }
+
   document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey && !e.altKey && !e.metaKey && String(e.key).toLowerCase() === 'g') {
+      e.preventDefault();
+      openJumpDialog();
+      return;
+    }
+
     if (e.key !== 'Escape') return;
-    if (queryHelpModal && !queryHelpModal.classList.contains('hidden')) closeQueryHelp();
+    if (jumpSession) cancelJump();
+    else if (queryHelpModal && !queryHelpModal.classList.contains('hidden')) closeQueryHelp();
     else if (selectionMenu && !selectionMenu.classList.contains('hidden')) closeSelectionMenu();
     else if (locationModal && !locationModal.classList.contains('hidden')) closeLocationModal();
     else if (modal && !modal.classList.contains('hidden')) closeModal();
@@ -1114,25 +1396,30 @@
 
   function render() {
     var f = getFilters();
-    var filtered = f.advancedError
+    var jumpPreviewing = !!(jumpSession && jumpSession.previewing);
+    var filtered = jumpPreviewing
+      ? records.slice()
+      : f.advancedError
       ? []
       : records.filter(function (r) { return matches(r, f) && matchesSelection(r); });
     var total = filtered.length;
 
     if (statsEl) {
-      statsEl.textContent = f.advancedError
+      statsEl.textContent = !jumpPreviewing && f.advancedError
         ? ('Query error: ' + f.advancedError)
         : (total + ' result(s)');
     }
     if (!listEl) return;
 
     listEl.innerHTML = '';
+    renderedRowsById = {};
 
     for (var i = 0; i < filtered.length; i++) {
       var r = filtered[i];
 
       var row = document.createElement('div');
       row.className = 'row';
+      if (r.id) renderedRowsById[r.id] = row;
 
       var cover = document.createElement('div');
       cover.className = 'cover';

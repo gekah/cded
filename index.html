@@ -11,7 +11,7 @@
     <div class="topbar">
       <div class="brand">Dem Ed seng CDen</div>
       <div class="topbar-right">
-        <div class="generated muted">2026-10-23</div>
+        <div class="generated muted">2026-10-24</div>
         <button id="toggleAdvanced" class="toggle-advanced" type="button" aria-expanded="true">Filters</button>
       </div>
     </div>
@@ -67,6 +67,13 @@
     </div>
     <div id="list" class="list"></div>
   </main>
+
+  <div id="jumpDialog" class="jump-dialog hidden" role="dialog" aria-modal="false" aria-labelledby="jumpTitle">
+    <div id="jumpTitle" class="jump-title">Jump to CD</div>
+    <input id="jumpInput" type="text" inputmode="numeric" autocomplete="off" aria-describedby="jumpStatus jumpHint" />
+    <div id="jumpStatus" class="jump-status" aria-live="polite">Enter a positive CD number.</div>
+    <div id="jumpHint" class="jump-hint">Enter accepts · Esc cancels</div>
+  </div>
 
   <div id="imgModal" class="modal hidden" aria-hidden="true">
     <div id="modalBackdrop" class="modal-backdrop"></div>
@@ -125,8 +132,9 @@
           <div><code>=missing:ripped</code><span>CDs without one</span></div>
           <div><code>=artist:"Johann Sebastian Bach" AND has:ripped</code><span>Combine conditions</span></div>
           <div><code>=title:sonata OR title:concerto</code><span>Match either condition</span></div>
+          <div><code>=shelf:L03</code><span>CDs on physical shelf L03 (currently CD 92–125)</span></div>
         </div>
-        <p>Fields: <code>cd</code>, <code>title</code>, <code>artist</code>, <code>composer</code>, <code>year</code>, <code>label</code>, <code>catno</code>, <code>notes</code>, <code>cdcount</code>, <code>bay</code>, <code>shelf</code>.</p>
+        <p>Fields: <code>cd</code>, <code>title</code>, <code>artist</code>, <code>composer</code>, <code>year</code>, <code>label</code>, <code>catno</code>, <code>notes</code>, <code>cdcount</code>, <code>bay</code>, <code>shelf</code>. For <code>shelf</code>, use the physical code shown by the location dialog, such as <code>L03</code>, <code>C04</code>, or <code>A02</code>.</p>
         <p>Use <code>has:</code> or <code>missing:</code> with <code>ripped</code>, <code>frontcover</code>, <code>backcover</code>, <code>composer</code>, <code>musicbrainz</code>, <code>listenbrainz</code>, <code>discogs</code>, <code>qobuz</code>, or <code>naxos</code>.</p>
         <p>Use <code>AND</code> / <code>OR</code> (or <code>&amp;</code> / <code>|</code>) between conditions. Quote a value containing spaces. Parentheses are not supported.</p>
       </div>
