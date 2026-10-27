@@ -41,6 +41,8 @@
   var selectionFilterMobile = document.querySelectorAll('input[name="selectionFilterMobile"]');
   var copySelectedDesktop = el('copySelectedDesktop');
   var copySelectedMobile = el('copySelectedMobile');
+  var selectAllMatchingDesktop = el('selectAllMatchingDesktop');
+  var selectAllMatchingMobile = el('selectAllMatchingMobile');
   var clearSelectedDesktop = el('clearSelectedDesktop');
   var clearSelectedMobile = el('clearSelectedMobile');
   var jumpDialog = el('jumpDialog');
@@ -1126,6 +1128,33 @@
     });
   }
 
+  function selectAllMatching(button) {
+    var filters = getFilters();
+    if (filters.advancedError) {
+      flashButton(button, 'Query error');
+      return;
+    }
+
+    var matched = records.filter(function (record) { return matches(record, filters); });
+    var added = 0;
+    for (var i = 0; i < matched.length; i++) {
+      var id = matched[i].id;
+      if (!id || selectedIds[id]) continue;
+      selectedIds[id] = true;
+      added++;
+    }
+
+    if (matched.length === 0) {
+      flashButton(button, 'No matches');
+      return;
+    }
+
+    saveSelectedIds();
+    updateSelectionUi();
+    render();
+    flashButton(button, added > 0 ? ('Selected ' + added) : 'Already selected');
+  }
+
   function clearSelected(button) {
     var count = getSelectedCount();
     if (count === 0) {
@@ -1331,6 +1360,8 @@
   if (btnBack) btnBack.addEventListener('click', function () { setModalImage('back'); });
   if (copySelectedDesktop) copySelectedDesktop.addEventListener('click', function () { copySelectedList(copySelectedDesktop); });
   if (copySelectedMobile) copySelectedMobile.addEventListener('click', function () { copySelectedList(copySelectedMobile); });
+  if (selectAllMatchingDesktop) selectAllMatchingDesktop.addEventListener('click', function () { selectAllMatching(selectAllMatchingDesktop); });
+  if (selectAllMatchingMobile) selectAllMatchingMobile.addEventListener('click', function () { selectAllMatching(selectAllMatchingMobile); });
   if (clearSelectedDesktop) clearSelectedDesktop.addEventListener('click', function () { clearSelected(clearSelectedDesktop); });
   if (clearSelectedMobile) clearSelectedMobile.addEventListener('click', function () { clearSelected(clearSelectedMobile); });
 
