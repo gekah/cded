@@ -25,6 +25,10 @@
   var statsEl = el('stats');
 
   var qAll = el('qAll');
+  var savedSearchControl = el('savedSearchControl');
+  var savedSearchButton = el('savedSearchButton');
+  var savedSearchMenu = el('savedSearchMenu');
+  var savedSearchItems = document.querySelectorAll('[data-saved-query]');
   var queryHelpButton = el('queryHelpButton');
   var queryHelpModal = el('queryHelpModal');
   var queryHelpBackdrop = el('queryHelpBackdrop');
@@ -113,6 +117,7 @@
   var cabinetMap = el('cabinetMap');
 
   var isHosted = !!(window.chrome && window.chrome.webview);
+  if (isHosted && savedSearchControl) savedSearchControl.classList.remove('hidden');
   var selectedStorageKey = 'cded-selected-record-ids-v1';
   var selectedIds = loadSelectedIds();
   var selectionMode = 'all';
@@ -240,6 +245,7 @@
     if (key === 'ripped') return 'ripped';
     if (key === 'frontcover') return 'frontcover';
     if (key === 'backcover') return 'backcover';
+    if (key === 'notes' || key === 'note' || key === 'comments' || key === 'comment') return 'notes';
 
     return null;
   }
@@ -287,6 +293,25 @@
       if (!hasText(r.year)) return false;
       var year = Number(r.year);
       return isFinite(year) && year >= startYear && year <= endYear;
+    };
+  }
+
+  function compileCdNumberMatcher(value) {
+    var text = String(value || '').trim();
+    var comparison = text.match(/^(>=|<=|>|<)\s*(\d+)$/);
+    if (!comparison) {
+      return function (r) { return contains(r.cDedNumber, value); };
+    }
+
+    var operator = comparison[1];
+    var expected = parseInt(comparison[2], 10);
+    return function (r) {
+      var actual = parseCdNumber(r.cDedNumber);
+      if (actual === null) return false;
+      if (operator === '>') return actual > expected;
+      if (operator === '>=') return actual >= expected;
+      if (operator === '<') return actual < expected;
+      return actual <= expected;
     };
   }
 
@@ -360,7 +385,7 @@
       return function (r) { return contains(r.composer, value); };
     }
     if (fieldName === 'cd') {
-      return function (r) { return contains(r.cDedNumber, value); };
+      return compileCdNumberMatcher(value);
     }
 
     throw new Error('Unknown field: ' + fieldName);
@@ -379,6 +404,7 @@
       if (targetName === 'ripped') return r.ripped !== null && r.ripped !== undefined;
       if (targetName === 'frontcover') return hasText(r.coverOriginal) || hasText(r.coverThumb);
       if (targetName === 'backcover') return hasText(r.backCoverOriginal);
+      if (targetName === 'notes') return hasText(r.notes);
 
       return false;
     };
@@ -766,6 +792,20 @@
       queryHelpButton.setAttribute('aria-expanded', 'false');
       queryHelpButton.focus();
     }
+  }
+
+  function closeSavedSearchMenu() {
+    if (!savedSearchMenu || !savedSearchButton) return;
+    savedSearchMenu.classList.add('hidden');
+    savedSearchButton.setAttribute('aria-expanded', 'false');
+  }
+
+  function applySavedSearch(query) {
+    if (!qAll) return;
+    qAll.value = query;
+    qAll.dispatchEvent(new Event('input', { bubbles: true }));
+    closeSavedSearchMenu();
+    qAll.focus();
   }
 
   function openQueryHelp() {
@@ -1297,6 +1337,23 @@
   if (queryHelpBackdrop) queryHelpBackdrop.addEventListener('click', closeQueryHelp);
   if (locationClose) locationClose.addEventListener('click', closeLocationModal);
   if (locationBackdrop) locationBackdrop.addEventListener('click', closeLocationModal);
+  if (savedSearchButton) {
+    savedSearchButton.addEventListener('click', function () {
+      if (!savedSearchMenu) return;
+      var open = savedSearchMenu.classList.contains('hidden');
+      if (open) {
+        savedSearchMenu.classList.remove('hidden');
+        savedSearchButton.setAttribute('aria-expanded', 'true');
+      } else {
+        closeSavedSearchMenu();
+      }
+    });
+  }
+  for (var savedSearchIndex = 0; savedSearchIndex < savedSearchItems.length; savedSearchIndex++) {
+    savedSearchItems[savedSearchIndex].addEventListener('click', function () {
+      applySavedSearch(this.getAttribute('data-saved-query') || '');
+    });
+  }
   if (selectionMenuButton) {
     selectionMenuButton.addEventListener('click', function () {
       if (!selectionMenu) return;
@@ -1315,6 +1372,13 @@
     if (selectionMenu.contains(e.target)) return;
     if (selectionMenuButton && selectionMenuButton.contains(e.target)) return;
     closeSelectionMenu();
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!savedSearchMenu || savedSearchMenu.classList.contains('hidden')) return;
+    if (savedSearchMenu.contains(e.target)) return;
+    if (savedSearchButton && savedSearchButton.contains(e.target)) return;
+    closeSavedSearchMenu();
   });
 
   if (jumpInput) {
@@ -1351,6 +1415,7 @@
     if (e.key !== 'Escape') return;
     if (jumpSession) cancelJump();
     else if (queryHelpModal && !queryHelpModal.classList.contains('hidden')) closeQueryHelp();
+    else if (savedSearchMenu && !savedSearchMenu.classList.contains('hidden')) closeSavedSearchMenu();
     else if (selectionMenu && !selectionMenu.classList.contains('hidden')) closeSelectionMenu();
     else if (locationModal && !locationModal.classList.contains('hidden')) closeLocationModal();
     else if (modal && !modal.classList.contains('hidden')) closeModal();

@@ -21,6 +21,16 @@
         <label for="qAll">Fulltext</label>
         <div class="fulltext-control">
           <input id="qAll" type="search" placeholder="Search anything..." />
+          <div id="savedSearchControl" class="saved-search-control hidden">
+            <button id="savedSearchButton" class="query-help-button saved-search-button" type="button" aria-label="Common searches" aria-haspopup="menu" aria-expanded="false" title="Common searches">&#9734;</button>
+            <div id="savedSearchMenu" class="saved-search-menu hidden" role="menu">
+              <button type="button" role="menuitem" data-saved-query="=missing:backcover">Missing back covers</button>
+              <button type="button" role="menuitem" data-saved-query="=has:ripped">Ripped CDs</button>
+              <button type="button" role="menuitem" data-saved-query="=notes:&quot;[Missing in collection]&quot; OR notes:&quot;[Disc unreadable]&quot;">Missing or unreadable</button>
+              <button type="button" role="menuitem" data-saved-query="=has:notes">Has comments</button>
+              <button type="button" role="menuitem" data-saved-query="=cd:&gt;2000">CDs above 2000</button>
+            </div>
+          </div>
           <button id="queryHelpButton" class="query-help-button" type="button" aria-label="Query help" aria-haspopup="dialog" aria-expanded="false" title="Query help">?</button>
         </div>
       </div>
@@ -136,8 +146,8 @@
           <div><code>=title:sonata OR title:concerto</code><span>Match either condition</span></div>
           <div><code>=shelf:L03</code><span>CDs on physical shelf L03 (currently CD 92–125)</span></div>
         </div>
-        <p>Fields: <code>cd</code>, <code>title</code>, <code>artist</code>, <code>composer</code>, <code>year</code>, <code>label</code>, <code>catno</code>, <code>notes</code>, <code>cdcount</code>, <code>bay</code>, <code>shelf</code>. For <code>shelf</code>, use the physical code shown by the location dialog, such as <code>L03</code>, <code>C04</code>, or <code>A02</code>.</p>
-        <p>Use <code>has:</code> or <code>missing:</code> with <code>ripped</code>, <code>frontcover</code>, <code>backcover</code>, <code>composer</code>, <code>musicbrainz</code>, <code>listenbrainz</code>, <code>discogs</code>, <code>qobuz</code>, or <code>naxos</code>.</p>
+        <p>Fields: <code>cd</code>, <code>title</code>, <code>artist</code>, <code>composer</code>, <code>year</code>, <code>label</code>, <code>catno</code>, <code>notes</code>, <code>cdcount</code>, <code>bay</code>, <code>shelf</code>. CD numbers also accept comparisons such as <code>cd:&gt;2000</code>. For <code>shelf</code>, use the physical code shown by the location dialog, such as <code>L03</code>, <code>C04</code>, or <code>A02</code>.</p>
+        <p>Use <code>has:</code> or <code>missing:</code> with <code>ripped</code>, <code>frontcover</code>, <code>backcover</code>, <code>notes</code>, <code>composer</code>, <code>musicbrainz</code>, <code>listenbrainz</code>, <code>discogs</code>, <code>qobuz</code>, or <code>naxos</code>.</p>
         <p>Use <code>AND</code> / <code>OR</code> (or <code>&amp;</code> / <code>|</code>) between conditions. Quote a value containing spaces. Parentheses are not supported.</p>
       </div>
     </div>

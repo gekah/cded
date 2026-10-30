@@ -119,6 +119,43 @@ a { color: inherit; text-decoration: underline; }
 
 .query-help-button:hover { background: #e5eef2; }
 
+.saved-search-control {
+  position: relative;
+  flex: 0 0 31px;
+}
+
+.saved-search-button { color: #45677a; }
+
+.saved-search-menu {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 7px);
+  right: 0;
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+}
+
+.saved-search-menu button {
+  display: block;
+  width: 100%;
+  padding: 7px 9px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.saved-search-menu button:hover,
+.saved-search-menu button:focus {
+  background: var(--soft);
+  outline: none;
+}
+
 .filter-grid {
   display: flex;
   flex-wrap: wrap;
