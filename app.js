@@ -523,7 +523,7 @@
 
       while (index < input.length) {
         var ch = input.charAt(index);
-        if (ch === '&' || ch === '|') break;
+        if (ch === '&' || ch === '|' || ch === '(' || ch === ')') break;
 
         if (/\s/.test(ch)) {
           var whitespaceStart = index;
@@ -583,15 +583,27 @@
       throw syntaxError('Unknown field or predicate: ' + identifier);
     }
 
+    function parseTerm() {
+      skipWhitespace();
+      if (input.charAt(index) !== '(') return parseExpressionMatcher();
+
+      index++;
+      var matcher = parseOrGroup();
+      skipWhitespace();
+      if (input.charAt(index) !== ')') throw syntaxError('Expected a closing parenthesis.');
+      index++;
+      return matcher;
+    }
+
     function parseAndGroup() {
-      var matchers = [parseExpressionMatcher()];
+      var matchers = [parseTerm()];
 
       while (true) {
         var savedIndex = index;
         var op = tryReadLogicalOperator();
 
         if (op === 'AND') {
-          matchers.push(parseExpressionMatcher());
+          matchers.push(parseTerm());
           continue;
         }
 
@@ -607,31 +619,35 @@
       };
     }
 
+    function parseOrGroup() {
+      var orGroups = [parseAndGroup()];
+
+      while (true) {
+        skipWhitespace();
+        if (index >= input.length || input.charAt(index) === ')') break;
+
+        var op = tryReadLogicalOperator();
+        if (op !== 'OR') {
+          throw syntaxError('Expected AND or OR between expressions.');
+        }
+
+        orGroups.push(parseAndGroup());
+      }
+
+      return function (r) {
+        for (var i = 0; i < orGroups.length; i++) {
+          if (orGroups[i](r)) return true;
+        }
+        return false;
+      };
+    }
+
     skipWhitespace();
-    if (index >= input.length) {
-      return function () { return true; };
-    }
+    if (index >= input.length) return function () { return true; };
 
-    var orGroups = [parseAndGroup()];
-
-    while (true) {
-      skipWhitespace();
-      if (index >= input.length) break;
-
-      var op = tryReadLogicalOperator();
-      if (op !== 'OR') {
-        throw syntaxError('Expected AND or OR between expressions.');
-      }
-
-      orGroups.push(parseAndGroup());
-    }
-
-    return function (r) {
-      for (var i = 0; i < orGroups.length; i++) {
-        if (orGroups[i](r)) return true;
-      }
-      return false;
-    };
+    var matcher = parseOrGroup();
+    if (index < input.length) throw syntaxError('Unexpected closing parenthesis.');
+    return matcher;
   }
 
   function matches(r, f) {

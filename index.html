@@ -11,7 +11,7 @@
     <div class="topbar">
       <div class="brand">Dem Ed seng CDen</div>
       <div class="topbar-right">
-        <div class="generated muted">2026-11-13</div>
+        <div class="generated muted">2026-11-17</div>
         <button id="toggleAdvanced" class="toggle-advanced" type="button" aria-expanded="true">Filters</button>
       </div>
     </div>
@@ -28,7 +28,7 @@
               <button type="button" role="menuitem" data-saved-query="=has:ripped">Ripped CDs</button>
               <button type="button" role="menuitem" data-saved-query="=notes:&quot;[Missing in collection]&quot; OR notes:&quot;[Disc unreadable]&quot;">Missing or unreadable</button>
               <button type="button" role="menuitem" data-saved-query="=has:notes">Has comments</button>
-              <button type="button" role="menuitem" data-saved-query="=cd:&gt;2000">CDs above 2000</button>
+              <button type="button" role="menuitem" data-saved-query="=cd:&lt;=100">CD numbers up to 100</button>
             </div>
           </div>
           <button id="queryHelpButton" class="query-help-button" type="button" aria-label="Query help" aria-haspopup="dialog" aria-expanded="false" title="Query help">?</button>
@@ -143,12 +143,12 @@
           <div><code>=has:ripped</code><span>CDs with a ripped copy</span></div>
           <div><code>=missing:ripped</code><span>CDs without one</span></div>
           <div><code>=artist:"Johann Sebastian Bach" AND has:ripped</code><span>Combine conditions</span></div>
-          <div><code>=title:sonata OR title:concerto</code><span>Match either condition</span></div>
+          <div><code>=(notes:"[Missing in collection]" OR notes:"[Disc unreadable]") AND missing:qobuz</code><span>Missing or unreadable CDs without a Qobuz link</span></div>
           <div><code>=shelf:L03</code><span>CDs on physical shelf L03 (currently CD 92–125)</span></div>
         </div>
-        <p>Fields: <code>cd</code>, <code>title</code>, <code>artist</code>, <code>composer</code>, <code>year</code>, <code>label</code>, <code>catno</code>, <code>notes</code>, <code>cdcount</code>, <code>bay</code>, <code>shelf</code>. CD numbers also accept comparisons such as <code>cd:&gt;2000</code>. For <code>shelf</code>, use the physical code shown by the location dialog, such as <code>L03</code>, <code>C04</code>, or <code>A02</code>.</p>
+        <p>Fields: <code>cd</code>, <code>title</code>, <code>artist</code>, <code>composer</code>, <code>year</code>, <code>label</code>, <code>catno</code>, <code>notes</code>, <code>cdcount</code>, <code>bay</code>, <code>shelf</code>. CD numbers also accept comparisons such as <code>cd:&lt;=100</code>. For <code>shelf</code>, use the physical code shown by the location dialog, such as <code>L03</code>, <code>C04</code>, or <code>A02</code>.</p>
         <p>Use <code>has:</code> or <code>missing:</code> with <code>ripped</code>, <code>frontcover</code>, <code>backcover</code>, <code>notes</code>, <code>composer</code>, <code>musicbrainz</code>, <code>listenbrainz</code>, <code>discogs</code>, <code>qobuz</code>, or <code>naxos</code>.</p>
-        <p>Use <code>AND</code> / <code>OR</code> (or <code>&amp;</code> / <code>|</code>) between conditions. Quote a value containing spaces. Parentheses are not supported.</p>
+        <p>Use <code>AND</code> / <code>OR</code> (or <code>&amp;</code> / <code>|</code>) between conditions. <code>AND</code> binds more tightly than <code>OR</code>. Use parentheses to group conditions, and double quotes around values containing literal parentheses.</p>
       </div>
     </div>
   </div>
