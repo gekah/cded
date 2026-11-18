@@ -472,6 +472,29 @@ main { padding: 14px; }
 .links a { text-decoration: underline; }
 .links a.disabled { color: var(--muted); text-decoration: none; pointer-events: none; cursor: not-allowed; }
 
+.copy-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--soft);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.copy-summary > div { flex: 1; min-width: 0; }
+.copy-summary .copy-summary-head { font-weight: 600; }
+.copy-summary button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
 .hidden { display: none; }
 
 .modal {

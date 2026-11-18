@@ -1172,6 +1172,109 @@
     }, 1200);
   }
 
+  // Rough FLAC size of one CD, used when the catalog has no ripped CDs to average over.
+  var FALLBACK_BYTES_PER_DISC = 300 * 1000 * 1000;
+  // Common medium sizes in bytes (as sold, decimal); the first one that fits is suggested.
+  var MEDIUM_SIZES = [
+    { bytes: 4.7e9, label: '4.7 GB (DVD)' },
+    { bytes: 8e9, label: '8 GB' },
+    { bytes: 16e9, label: '16 GB' },
+    { bytes: 32e9, label: '32 GB' },
+    { bytes: 64e9, label: '64 GB' },
+    { bytes: 128e9, label: '128 GB' },
+    { bytes: 256e9, label: '256 GB' },
+    { bytes: 512e9, label: '512 GB' },
+    { bytes: 1e12, label: '1 TB' },
+    { bytes: 2e12, label: '2 TB' },
+    { bytes: 4e12, label: '4 TB' },
+    { bytes: 8e12, label: '8 TB' }
+  ];
+  // File system overhead, cover art, and the gap between a medium's label and its usable space.
+  var MEDIUM_HEADROOM = 1.08;
+
+  function isRipped(record) {
+    return record.ripped !== null && record.ripped !== undefined;
+  }
+
+  function discCount(record) {
+    var n = Number(record.cdCount);
+    return isFinite(n) && n >= 1 ? n : 1;
+  }
+
+  function averageBytesPerDisc() {
+    var bytes = 0;
+    var discs = 0;
+    for (var i = 0; i < records.length; i++) {
+      if (!isRipped(records[i])) continue;
+      bytes += Number(records[i].ripped) || 0;
+      discs += discCount(records[i]);
+    }
+    return discs > 0 && bytes > 0 ? bytes / discs : FALLBACK_BYTES_PER_DISC;
+  }
+
+  function formatBytes(bytes) {
+    if (bytes >= 1e12) return (bytes / 1e12).toFixed(2) + ' TB';
+    if (bytes >= 1e9) return (bytes / 1e9).toFixed(1) + ' GB';
+    return Math.max(1, Math.round(bytes / 1e6)) + ' MB';
+  }
+
+  function suggestMedium(bytes) {
+    var needed = bytes * MEDIUM_HEADROOM;
+    for (var i = 0; i < MEDIUM_SIZES.length; i++) {
+      if (needed <= MEDIUM_SIZES[i].bytes) return MEDIUM_SIZES[i].label;
+    }
+    return 'more than ' + MEDIUM_SIZES[MEDIUM_SIZES.length - 1].label;
+  }
+
+  function summarizeSelection() {
+    var summary = { total: 0, ripped: 0, rippedBytes: 0, unripped: 0, unrippedDiscs: 0 };
+    for (var i = 0; i < records.length; i++) {
+      var record = records[i];
+      if (!selectedIds[record.id]) continue;
+      summary.total++;
+      if (isRipped(record)) {
+        summary.ripped++;
+        summary.rippedBytes += Number(record.ripped) || 0;
+      } else {
+        summary.unripped++;
+        summary.unrippedDiscs += discCount(record);
+      }
+    }
+    summary.unrippedBytes = summary.unrippedDiscs * averageBytesPerDisc();
+    return summary;
+  }
+
+  function plural(n, one, many) {
+    return n + ' ' + (n === 1 ? one : many);
+  }
+
+  function buildSelectionSummaryHtml(s) {
+    var lines = [];
+    lines.push('<div class="copy-summary-head">Copied ' + plural(s.total, 'CD', 'CDs') + ' to the clipboard.</div>');
+    lines.push('<div>Ripped: ' + s.ripped + (s.ripped > 0 ? ' (' + formatBytes(s.rippedBytes) + ')' : '') +
+      ' · not yet ripped: ' + s.unripped +
+      (s.unripped > 0 ? ' (≈ ' + formatBytes(s.unrippedBytes) + ' once ripped, ' + plural(s.unrippedDiscs, 'disc', 'discs') + ')' : '') +
+      '</div>');
+    if (s.ripped > 0) {
+      lines.push('<div>Library from the ripped CDs: ' + formatBytes(s.rippedBytes) +
+        ' — fits on ' + suggestMedium(s.rippedBytes) + '.</div>');
+    }
+    if (s.unripped > 0) {
+      var all = s.rippedBytes + s.unrippedBytes;
+      lines.push('<div>With all of them ripped: ≈ ' + formatBytes(all) +
+        ' — fits on ' + suggestMedium(all) + '.</div>');
+    }
+    return lines.join('');
+  }
+
+  function showSelectionSummary(summary) {
+    var box = el('copySummary');
+    var text = el('copySummaryText');
+    if (!box || !text) return;
+    text.innerHTML = buildSelectionSummaryHtml(summary);
+    box.classList.remove('hidden');
+  }
+
   function copySelectedList(button) {
     var text = buildSelectedListText();
     if (!text) {
@@ -1181,6 +1284,7 @@
 
     copyText(text).then(function (ok) {
       flashButton(button, ok ? 'Copied' : 'Copy failed');
+      if (ok) showSelectionSummary(summarizeSelection());
     });
   }
 
@@ -1439,6 +1543,8 @@
 
   if (btnFront) btnFront.addEventListener('click', function () { setModalImage('front'); });
   if (btnBack) btnBack.addEventListener('click', function () { setModalImage('back'); });
+  var copySummaryClose = el('copySummaryClose');
+  if (copySummaryClose) copySummaryClose.addEventListener('click', function () { el('copySummary').classList.add('hidden'); });
   if (copySelectedDesktop) copySelectedDesktop.addEventListener('click', function () { copySelectedList(copySelectedDesktop); });
   if (copySelectedMobile) copySelectedMobile.addEventListener('click', function () { copySelectedList(copySelectedMobile); });
   if (selectAllMatchingDesktop) selectAllMatchingDesktop.addEventListener('click', function () { selectAllMatching(selectAllMatchingDesktop); });
